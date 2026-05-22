@@ -1,14 +1,13 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import next from "eslint-config-next";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
-
+/**
+ * ESLint flat config. `eslint-config-next` (v16) is itself a flat-config array
+ * bundling the Next.js, React, TypeScript, import and a11y rule sets.
+ *
+ * @type {import("eslint").Linter.Config[]}
+ */
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...next,
   {
     ignores: [
       ".next/**",
