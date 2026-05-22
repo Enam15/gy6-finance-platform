@@ -1,0 +1,122 @@
+// GY6 Finance Management System - Prisma schema
+// Docs: https://pris.ly/d/prisma-schema
+//
+// Phase 0 defines the foundational models only. Ledger / transactional tables
+// (income_entries, expense_entries, statement_entries, payments, transfers,
+// balance_adjustments, attachments) arrive in Phase 1.
+//
+// Prisma 7: the datasource block carries no `url`. The connection string is
+// supplied to the CLI via prisma.config.ts and to the runtime client via a
+// driver adapter (see lib/prisma.ts).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Stable identifier for each account category. Categories live in the
+/// account_categories table so display name and visibility can change, while
+/// this key stays constant for application code to rely on.
+enum AccountCategoryKey {
+  BUSINESS
+  FOUNDER
+  CLIENT
+  EMPLOYEE
+  SUBSCRIPTION
+  SYSTEM
+}
+
+/// Identifies the hidden internal accounts that give double-entry postings a
+/// counter-account in the movement-based ledger. Set only on the four system
+/// accounts; null on every user-facing account.
+enum SystemAccountKey {
+  REVENUE
+  EXPENSE
+  ADJUSTMENTS
+  OPENING_BALANCES
+}
+
+/// The kind of change recorded in an audit log entry.
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  CONFIRM
+  REVERSE
+  TRANSFER
+  ADJUST
+  RENEW
+  EXPORT
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// Account category. Drives balance visibility in the UI - Employee and
+/// Subscription balances are hidden; Business, Founder and Client are shown.
+/// The SYSTEM category holds hidden internal accounts and is never user-facing.
+model AccountCategory {
+  id             String             @id @default(uuid(7))
+  key            AccountCategoryKey @unique
+  name           String
+  balanceVisible Boolean            @map("balance_visible")
+  isSystem       Boolean            @default(false) @map("is_system")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  accounts Account[]
+
+  @@map("account_categories")
+}
+
+/// A money-holding entity in the ledger: a business bank account, a founder, a
+/// client, an employee, a subscription, or a hidden system account. Every
+/// transaction moves value between two accounts. `balance` is materialised in
+/// minor units (integer, never float) and is mutated only by ledger events.
+model Account {
+  id            String            @id @default(uuid(7))
+  categoryId    String            @map("category_id")
+  name          String
+  systemKey     SystemAccountKey? @unique @map("system_key")
+  description   String?
+  balance       BigInt            @default(0)
+  allowNegative Boolean           @default(false) @map("allow_negative")
+  isActive      Boolean           @default(true) @map("is_active")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  category AccountCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@map("accounts")
+}
+
+/// Append-only audit trail. Every state-changing operation writes one row.
+/// Rows are never updated or deleted - corrections are new entries. `before`
+/// and `after` capture JSON snapshots so history survives later edits.
+model AuditLog {
+  id         String      @id @default(uuid(7))
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String?     @map("entity_id")
+  summary    String
+  before     Json?
+  after      Json?
+  metadata   Json?
+  actorId    String?     @map("actor_id")
+  actorLabel String?     @map("actor_label")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
