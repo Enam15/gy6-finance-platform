@@ -1,10 +1,6 @@
 // GY6 Finance Management System - Prisma schema
 // Docs: https://pris.ly/d/prisma-schema
 //
-// Phase 0 defines the foundational models only. Ledger / transactional tables
-// (income_entries, expense_entries, statement_entries, payments, transfers,
-// balance_adjustments, attachments) arrive in Phase 1.
-//
 // Prisma 7: the datasource block carries no `url`. The connection string is
 // supplied to the CLI via prisma.config.ts and to the runtime client via a
 // driver adapter (see lib/prisma.ts).
@@ -22,9 +18,7 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
-/// Stable identifier for each account category. Categories live in the
-/// account_categories table so display name and visibility can change, while
-/// this key stays constant for application code to rely on.
+/// Stable identifier for each account category.
 enum AccountCategoryKey {
   BUSINESS
   FOUNDER
@@ -35,13 +29,53 @@ enum AccountCategoryKey {
 }
 
 /// Identifies the hidden internal accounts that give double-entry postings a
-/// counter-account in the movement-based ledger. Set only on the four system
-/// accounts; null on every user-facing account.
+/// counter-account in the movement-based ledger.
 enum SystemAccountKey {
   REVENUE
   EXPENSE
   ADJUSTMENTS
   OPENING_BALANCES
+}
+
+/// Which side of an account a debit posting falls on. A debit increases a
+/// debit-normal account and decreases a credit-normal one; a credit does the
+/// reverse. This is the minimum double-entry needs to keep balances correct.
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+/// Lifecycle of an income entry, expense entry, or transfer.
+enum EntryState {
+  DRAFT
+  CONFIRMED
+  REVERSED
+}
+
+/// What an income/expense transaction category applies to.
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+/// The nature of a ledger posting.
+enum StatementEntryType {
+  INCOME
+  EXPENSE
+  PAYMENT
+  TRANSFER
+  ADJUSTMENT
+  REVERSAL
+  OPENING_BALANCE
+}
+
+/// The kind of operational record a statement entry was posted from.
+enum StatementSourceType {
+  INCOME_ENTRY
+  EXPENSE_ENTRY
+  PAYMENT
+  TRANSFER
+  BALANCE_ADJUSTMENT
 }
 
 /// The kind of change recorded in an audit log entry.
@@ -58,7 +92,7 @@ enum AuditAction {
 }
 
 // ---------------------------------------------------------------------------
-// Models
+// Reference models
 // ---------------------------------------------------------------------------
 
 /// Account category. Drives balance visibility in the UI - Employee and
@@ -87,6 +121,7 @@ model Account {
   categoryId    String            @map("category_id")
   name          String
   systemKey     SystemAccountKey? @unique @map("system_key")
+  normalBalance NormalBalance     @map("normal_balance")
   description   String?
   balance       BigInt            @default(0)
   allowNegative Boolean           @default(false) @map("allow_negative")
@@ -96,13 +131,21 @@ model Account {
 
   category AccountCategory @relation(fields: [categoryId], references: [id])
 
+  debitEntries       StatementEntry[]    @relation("DebitAccount")
+  creditEntries      StatementEntry[]    @relation("CreditAccount")
+  incomeEntries      IncomeEntry[]
+  expenseEntries     ExpenseEntry[]
+  payments           Payment[]
+  transfersFrom      Transfer[]          @relation("TransferFrom")
+  transfersTo        Transfer[]          @relation("TransferTo")
+  balanceAdjustments BalanceAdjustment[]
+
   @@index([categoryId])
   @@map("accounts")
 }
 
 /// Append-only audit trail. Every state-changing operation writes one row.
-/// Rows are never updated or deleted - corrections are new entries. `before`
-/// and `after` capture JSON snapshots so history survives later edits.
+/// Rows are never updated or deleted - corrections are new entries.
 model AuditLog {
   id         String      @id @default(uuid(7))
   action     AuditAction
@@ -119,4 +162,208 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// User-defined label classifying an income or expense transaction. Distinct
+/// from account categories, which classify accounts rather than transactions.
+model TransactionCategory {
+  id        String       @id @default(uuid(7))
+  name      String
+  kind      CategoryKind
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  incomeEntries  IncomeEntry[]
+  expenseEntries ExpenseEntry[]
+
+  @@unique([name, kind])
+  @@map("transaction_categories")
+}
+
+// ---------------------------------------------------------------------------
+// Ledger
+// ---------------------------------------------------------------------------
+
+/// The immutable double-entry ledger. Every confirmed transaction posts one or
+/// more balanced rows here. Rows are append-only - never updated or deleted;
+/// corrections are new REVERSAL rows. A database trigger enforces this in
+/// addition to the repository layer (see the migration).
+model StatementEntry {
+  id                 String              @id @default(uuid(7))
+  transactionGroupId String              @map("transaction_group_id")
+  entryType          StatementEntryType  @map("entry_type")
+  debitAccountId     String              @map("debit_account_id")
+  creditAccountId    String              @map("credit_account_id")
+  amount             BigInt
+  description        String
+  effectiveDate      DateTime            @db.Date @map("effective_date")
+  sourceType         StatementSourceType @map("source_type")
+  sourceId           String              @map("source_id")
+  reversesEntryId    String?             @unique @map("reverses_entry_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  createdBy          String?             @map("created_by")
+
+  debitAccount  Account         @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  creditAccount Account         @relation("CreditAccount", fields: [creditAccountId], references: [id])
+  reverses      StatementEntry? @relation("Reversal", fields: [reversesEntryId], references: [id])
+  reversedBy    StatementEntry? @relation("Reversal")
+
+  @@index([transactionGroupId])
+  @@index([sourceType, sourceId])
+  @@index([debitAccountId])
+  @@index([creditAccountId])
+  @@index([effectiveDate])
+  @@map("statement_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Operational transaction records
+// ---------------------------------------------------------------------------
+
+/// Operational income record. The full amount is recognised on the ledger when
+/// the entry is CONFIRMED; payments against it are recorded separately.
+/// `amountDue` is service-maintained and DB-checked to equal total - paid.
+model IncomeEntry {
+  id              String     @id @default(uuid(7))
+  clientAccountId String     @map("client_account_id")
+  categoryId      String     @map("category_id")
+  description     String
+  totalAmount     BigInt     @map("total_amount")
+  amountPaid      BigInt     @default(0) @map("amount_paid")
+  amountDue       BigInt     @map("amount_due")
+  entryDate       DateTime   @db.Date @map("entry_date")
+  paymentDueOn    DateTime   @db.Date @map("payment_due_on")
+  state           EntryState @default(DRAFT)
+  confirmedAt     DateTime?  @map("confirmed_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  createdBy       String?    @map("created_by")
+
+  clientAccount Account             @relation(fields: [clientAccountId], references: [id])
+  category      TransactionCategory @relation(fields: [categoryId], references: [id])
+  payments      Payment[]
+  attachments   Attachment[]
+
+  @@index([clientAccountId])
+  @@index([categoryId])
+  @@index([state])
+  @@index([paymentDueOn])
+  @@map("income_entries")
+}
+
+/// Operational expense record. Mirror of IncomeEntry, for money GY6 owes.
+model ExpenseEntry {
+  id             String     @id @default(uuid(7))
+  payeeAccountId String     @map("payee_account_id")
+  categoryId     String     @map("category_id")
+  description    String
+  totalAmount    BigInt     @map("total_amount")
+  amountPaid     BigInt     @default(0) @map("amount_paid")
+  amountDue      BigInt     @map("amount_due")
+  entryDate      DateTime   @db.Date @map("entry_date")
+  paymentDueOn   DateTime   @db.Date @map("payment_due_on")
+  state          EntryState @default(DRAFT)
+  confirmedAt    DateTime?  @map("confirmed_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  createdBy      String?    @map("created_by")
+
+  payeeAccount Account             @relation(fields: [payeeAccountId], references: [id])
+  category     TransactionCategory @relation(fields: [categoryId], references: [id])
+  payments     Payment[]
+  attachments  Attachment[]
+
+  @@index([payeeAccountId])
+  @@index([categoryId])
+  @@index([state])
+  @@index([paymentDueOn])
+  @@map("expense_entries")
+}
+
+/// An instalment payment against a confirmed income or expense entry. Exactly
+/// one of incomeEntryId / expenseEntryId is set (enforced by a DB check).
+model Payment {
+  id                String   @id @default(uuid(7))
+  incomeEntryId     String?  @map("income_entry_id")
+  expenseEntryId    String?  @map("expense_entry_id")
+  businessAccountId String   @map("business_account_id")
+  amount            BigInt
+  paidOn            DateTime @db.Date @map("paid_on")
+  description       String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  createdBy         String?  @map("created_by")
+
+  incomeEntry     IncomeEntry?  @relation(fields: [incomeEntryId], references: [id])
+  expenseEntry    ExpenseEntry? @relation(fields: [expenseEntryId], references: [id])
+  businessAccount Account       @relation(fields: [businessAccountId], references: [id])
+
+  @@index([incomeEntryId])
+  @@index([expenseEntryId])
+  @@index([businessAccountId])
+  @@map("payments")
+}
+
+/// A transfer of cash between two of GY6's own accounts.
+model Transfer {
+  id            String     @id @default(uuid(7))
+  fromAccountId String     @map("from_account_id")
+  toAccountId   String     @map("to_account_id")
+  amount        BigInt
+  description   String?
+  effectiveDate DateTime   @db.Date @map("effective_date")
+  state         EntryState @default(DRAFT)
+  confirmedAt   DateTime?  @map("confirmed_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  createdBy     String?    @map("created_by")
+
+  fromAccount Account @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  toAccount   Account @relation("TransferTo", fields: [toAccountId], references: [id])
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([effectiveDate])
+  @@map("transfers")
+}
+
+/// A manual balance correction. Records the before/after balance and posts the
+/// difference through the ledger against the Adjustments system account.
+model BalanceAdjustment {
+  id              String   @id @default(uuid(7))
+  accountId       String   @map("account_id")
+  previousBalance BigInt   @map("previous_balance")
+  newBalance      BigInt   @map("new_balance")
+  difference      BigInt
+  reason          String
+  effectiveDate   DateTime @db.Date @map("effective_date")
+  createdAt       DateTime @default(now()) @map("created_at")
+  createdBy       String?  @map("created_by")
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@map("balance_adjustments")
+}
+
+/// File attachment metadata for an income or expense entry. The file itself
+/// lives in object storage under `storageKey`; upload wiring arrives later.
+/// Exactly one of incomeEntryId / expenseEntryId is set (DB check enforced).
+model Attachment {
+  id             String   @id @default(uuid(7))
+  incomeEntryId  String?  @map("income_entry_id")
+  expenseEntryId String?  @map("expense_entry_id")
+  fileName       String   @map("file_name")
+  storageKey     String   @map("storage_key")
+  contentType    String   @map("content_type")
+  sizeBytes      Int      @map("size_bytes")
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+  uploadedBy     String?  @map("uploaded_by")
+
+  incomeEntry  IncomeEntry?  @relation(fields: [incomeEntryId], references: [id])
+  expenseEntry ExpenseEntry? @relation(fields: [expenseEntryId], references: [id])
+
+  @@index([incomeEntryId])
+  @@index([expenseEntryId])
+  @@map("attachments")
 }
