@@ -19,19 +19,22 @@ class RollbackSentinel extends Error {
 async function runInRollback<T>(
   fn: (tx: DbClient) => Promise<T>,
 ): Promise<T> {
-  let captured: { value: T } | null = null;
+  // A wrapper object rather than a `let captured: ... | null = null` -
+  // TypeScript will not widen the narrowed-null type back after the async
+  // callback mutates it, which would make `captured.value` infer as never.
+  const slot: { value?: T } = {};
   try {
     await prisma.$transaction(async (tx) => {
-      captured = { value: await fn(tx) };
+      slot.value = await fn(tx);
       throw new RollbackSentinel();
     });
   } catch (error) {
     if (!(error instanceof RollbackSentinel)) throw error;
   }
-  if (!captured) {
+  if (slot.value === undefined) {
     throw new Error("runInRollback: callback did not return a value");
   }
-  return captured.value;
+  return slot.value;
 }
 
 describe("PostingService (integration)", () => {
