@@ -1,14 +1,20 @@
-import type { Account, SystemAccountKey } from "@/lib/generated/prisma/client";
+import type {
+  Account,
+  NormalBalance,
+  SystemAccountKey,
+} from "@/lib/generated/prisma/client";
 import type { DbClient } from "@/lib/prisma";
 
 /**
  * Fields accepted when creating an account. `balance` always starts at zero
  * and is only ever changed by ledger events; `systemKey` is set only for the
- * seeded internal system accounts.
+ * seeded internal system accounts. `normalBalance` is required - which side
+ * of the account a debit posting falls on.
  */
 export interface CreateAccountData {
   categoryId: string;
   name: string;
+  normalBalance: NormalBalance;
   description?: string | null;
   allowNegative?: boolean;
   systemKey?: SystemAccountKey | null;
@@ -45,6 +51,7 @@ export class AccountRepository {
       data: {
         categoryId: data.categoryId,
         name: data.name,
+        normalBalance: data.normalBalance,
         description: data.description ?? null,
         allowNegative: data.allowNegative ?? false,
         systemKey: data.systemKey ?? null,
