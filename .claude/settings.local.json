@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(anthropic-skills:pdf)",
+      "Skill(anthropic-skills:pdf:*)",
+      "PowerShell(python --version)",
+      "PowerShell(python -m pip install --quiet --disable-pip-version-check reportlab pypdf)",
+      "PowerShell(if \\($?\\) { \"deps ready\" })"
+    ]
+  }
+}
