@@ -9,7 +9,8 @@ import { prisma } from "../lib/prisma";
 /**
  * Seeds the reference data the system depends on:
  *   - the six account categories (five user-facing plus SYSTEM)
- *   - the four hidden internal system accounts (with their normal balances)
+ *   - the four hidden internal system accounts (with their normal balances
+ *     and negative-balance permissions)
  *
  * Idempotent: every record is upserted by its unique key, so the script is
  * safe to run repeatedly. Invoke with `npm run db:seed`.
@@ -41,6 +42,8 @@ interface SystemAccountSeed {
   name: string;
   description: string;
   normalBalance: NormalBalance;
+  /** Whether the posting engine may let the balance drop below zero. */
+  allowNegative: boolean;
 }
 
 const systemAccounts: SystemAccountSeed[] = [
@@ -50,6 +53,9 @@ const systemAccounts: SystemAccountSeed[] = [
     description:
       "Counter-account for recognised income; credited when an income entry is confirmed.",
     normalBalance: "CREDIT",
+    // Only ever credited (or debited by income reversals); should never go
+    // below zero under correct usage. Keep the guard on.
+    allowNegative: false,
   },
   {
     systemKey: "EXPENSE",
@@ -57,6 +63,7 @@ const systemAccounts: SystemAccountSeed[] = [
     description:
       "Counter-account for recognised expenses; debited when an expense entry is confirmed.",
     normalBalance: "DEBIT",
+    allowNegative: false,
   },
   {
     systemKey: "ADJUSTMENTS",
@@ -64,6 +71,9 @@ const systemAccounts: SystemAccountSeed[] = [
     description:
       "Counter-account for manual balance adjustments, preserving double-entry.",
     normalBalance: "CREDIT",
+    // Adjustments can swing either way (corrections up or down); the
+    // negative-balance guard does not apply meaningfully here.
+    allowNegative: true,
   },
   {
     systemKey: "OPENING_BALANCES",
@@ -71,6 +81,7 @@ const systemAccounts: SystemAccountSeed[] = [
     description:
       "Counter-account for the one-time opening balances entered at go-live.",
     normalBalance: "CREDIT",
+    allowNegative: true,
   },
 ];
 
@@ -103,16 +114,18 @@ async function seed(): Promise<void> {
         description: account.description,
         systemKey: account.systemKey,
         normalBalance: account.normalBalance,
+        allowNegative: account.allowNegative,
       },
       update: {
         categoryId: systemCategory.id,
         name: account.name,
         description: account.description,
         normalBalance: account.normalBalance,
+        allowNegative: account.allowNegative,
       },
     });
     console.log(
-      `  system account: ${account.systemKey} (${account.normalBalance})`,
+      `  system account: ${account.systemKey} (${account.normalBalance}${account.allowNegative ? ", allowNegative" : ""})`,
     );
   }
 
