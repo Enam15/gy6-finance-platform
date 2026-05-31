@@ -46,6 +46,14 @@ export class AccountRepository {
     });
   }
 
+  /** Visible accounts: user-facing only (excludes seeded system accounts) and active. */
+  listVisible(): Promise<Account[]> {
+    return this.db.account.findMany({
+      where: { systemKey: null, isActive: true },
+      orderBy: { name: "asc" },
+    });
+  }
+
   create(data: CreateAccountData): Promise<Account> {
     return this.db.account.create({
       data: {

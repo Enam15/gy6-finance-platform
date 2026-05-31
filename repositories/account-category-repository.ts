@@ -28,6 +28,14 @@ export class AccountCategoryRepository {
     return this.db.accountCategory.findMany({ orderBy: { name: "asc" } });
   }
 
+  /** Categories users can pick when creating an account (system category excluded). */
+  listSelectable(): Promise<AccountCategory[]> {
+    return this.db.accountCategory.findMany({
+      where: { isSystem: false },
+      orderBy: { name: "asc" },
+    });
+  }
+
   create(data: CreateAccountCategoryData): Promise<AccountCategory> {
     return this.db.accountCategory.create({
       data: {

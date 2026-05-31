@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type {
   Account,
+  AccountCategory,
   AccountCategoryKey,
   NormalBalance,
   PrismaClient,
@@ -50,9 +51,19 @@ function normalBalanceForCategory(key: AccountCategoryKey): NormalBalance {
 export class AccountService {
   constructor(private readonly db: PrismaClient = prisma) {}
 
-  /** All accounts, ordered by name. */
+  /** All accounts, ordered by name (includes hidden system accounts). */
   listAccounts(): Promise<Account[]> {
     return new AccountRepository(this.db).listAll();
+  }
+
+  /** Visible accounts (user-facing, not archived) for the UI. */
+  listVisible(): Promise<Account[]> {
+    return new AccountRepository(this.db).listVisible();
+  }
+
+  /** Categories users can pick when creating an account. */
+  listSelectableCategories(): Promise<AccountCategory[]> {
+    return new AccountCategoryRepository(this.db).listSelectable();
   }
 
   /** A single account by id. */
