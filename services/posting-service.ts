@@ -19,6 +19,9 @@ export interface PostingLine {
   amount: bigint;
   /** Optional per-posting description; falls back to the group description. */
   description?: string;
+  /** Set when this line reverses an existing statement_entry (each line in a
+   *  compound reversal links to its own original). */
+  reversesEntryId?: string | null;
 }
 
 export interface PostingRequest {
@@ -30,8 +33,6 @@ export interface PostingRequest {
   effectiveDate: Date;
   description: string;
   postings: PostingLine[];
-  /** Set when posting a reversal. The link is recorded on the first posting. */
-  reversesEntryId?: string | null;
   actorId?: string | null;
   actorLabel?: string | null;
 }
@@ -58,10 +59,10 @@ export class PostingFailure extends Error {
  *
  * Callers pass in their own transaction client (`tx`) - the caller is
  * responsible for wrapping with `prisma.$transaction(async (tx) => ...)`,
- * which lets income / expense / payment / transfer / adjustment services do
- * their own updates atomically alongside the posting. Throws PostingFailure
- * on validation or business-rule failure; let it propagate to roll back
- * the transaction.
+ * which lets income / expense / payment / transfer / adjustment / reversal
+ * services do their own updates atomically alongside the posting. Throws
+ * PostingFailure on validation or business-rule failure; let it propagate
+ * to roll back the transaction.
  *
  * Inside it: locks the affected accounts in id order (deadlock-safe),
  * validates that no balance would silently go negative, writes the
@@ -137,7 +138,7 @@ export class PostingService {
     // 5. Write the statement entries.
     const entryRepo = new StatementEntryRepository(tx);
     const created: StatementEntry[] = [];
-    for (const [index, posting] of request.postings.entries()) {
+    for (const posting of request.postings) {
       const entry = await entryRepo.create({
         transactionGroupId,
         entryType: request.entryType,
@@ -148,8 +149,7 @@ export class PostingService {
         effectiveDate: request.effectiveDate,
         sourceType: request.sourceType,
         sourceId: request.sourceId,
-        reversesEntryId:
-          index === 0 ? request.reversesEntryId ?? null : null,
+        reversesEntryId: posting.reversesEntryId ?? null,
         createdBy: request.actorId ?? null,
       });
       created.push(entry);
@@ -169,9 +169,7 @@ export class PostingService {
       0n,
     );
     await new AuditLogRepository(tx).record({
-      action: request.reversesEntryId
-        ? "REVERSE"
-        : entryTypeToAuditAction(request.entryType),
+      action: entryTypeToAuditAction(request.entryType),
       entityType: "StatementEntry",
       entityId: transactionGroupId,
       summary: `Posted ${created.length} statement entr${created.length === 1 ? "y" : "ies"} (${request.entryType.toLowerCase()})`,
