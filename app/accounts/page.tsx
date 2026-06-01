@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -76,7 +77,12 @@ export default async function AccountsPage() {
                   return (
                     <TableRow key={account.id}>
                       <TableCell className="font-medium">
-                        {account.name}
+                        <Link
+                          href={`/accounts/${account.id}`}
+                          className="hover:underline"
+                        >
+                          {account.name}
+                        </Link>
                       </TableCell>
                       <TableCell>{categoryName}</TableCell>
                       <TableCell>
