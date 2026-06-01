@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { label: "Categories", href: "/categories" },
   { label: "Income", href: "/income" },
   { label: "Expenses", href: "/expenses" },
+  { label: "Ledger", href: "/ledger" },
 ];
 
 export function AppSidebar() {
