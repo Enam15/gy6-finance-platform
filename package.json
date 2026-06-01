@@ -1,7 +1,12 @@
 {
   "name": "gy6-finance",
   "version": "0.1.0",
+  "description": "Foundation for an internal finance and accounting platform for GY6.",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Enam15/gy6-finance-platform.git"
+  },
   "engines": {
     "node": ">=20"
   },
