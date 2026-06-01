@@ -22,6 +22,7 @@ import type { EntryStatus } from "@/lib/entry-status";
 import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateIncomeDialog } from "./_components/create-income-dialog";
 import { ConfirmIncomeButton } from "./_components/confirm-button";
+import { PayIncomeButton } from "./_components/pay-income-button";
 
 export const dynamic = "force-dynamic";
 
@@ -58,16 +59,22 @@ export default async function IncomePage() {
   const accountService = new AccountService();
   const categoryService = new TransactionCategoryService();
 
-  const [entries, accounts, incomeCategories] = await Promise.all([
-    incomeService.listEntries(),
-    accountService.listVisible(),
-    categoryService.listByKind("INCOME"),
-  ]);
+  const [entries, accounts, incomeCategories, businessAccounts] =
+    await Promise.all([
+      incomeService.listEntries(),
+      accountService.listVisible(),
+      categoryService.listByKind("INCOME"),
+      accountService.listBusinessAccounts(),
+    ]);
 
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
   const categoryNameById = new Map(
     incomeCategories.map((c) => [c.id, c.name]),
   );
+  const businessAccountOptions = businessAccounts.map((a) => ({
+    id: a.id,
+    name: a.name,
+  }));
 
   const canCreate = accounts.length > 0 && incomeCategories.length > 0;
 
@@ -78,7 +85,8 @@ export default async function IncomePage() {
           <h1 className="text-2xl font-semibold tracking-tight">Income</h1>
           <p className="text-sm text-muted-foreground">
             Drafts do not move the ledger; confirming posts double-entry
-            (debit the source account, credit Revenue).
+            (debit the source account, credit Revenue). Payments are
+            separate postings that reduce amount_due.
           </p>
         </div>
         {canCreate ? (
@@ -162,6 +170,14 @@ export default async function IncomePage() {
                         <ConfirmIncomeButton
                           entryId={entry.id}
                           description={entry.description}
+                        />
+                      )}
+                      {entry.state === "CONFIRMED" && entry.amountDue > 0n && (
+                        <PayIncomeButton
+                          entryId={entry.id}
+                          description={entry.description}
+                          amountDueMinor={entry.amountDue.toString()}
+                          businessAccounts={businessAccountOptions}
                         />
                       )}
                     </TableCell>

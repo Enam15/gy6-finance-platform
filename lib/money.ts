@@ -165,3 +165,16 @@ export function formatMoney(amount: Money): string {
   const fractionStr = fraction.toString().padStart(2, "0");
   return `${negative ? "-" : ""}${wholeStr}.${fractionStr}`;
 }
+
+/**
+ * Format money for an input field pre-fill: major units with two decimals,
+ * no thousand separators. moneyFromMajor accepts this format directly, so
+ * a user can submit without editing.
+ */
+export function formatMoneyForInput(amount: Money): string {
+  const negative = amount < 0n;
+  const absolute = negative ? -amount : amount;
+  const whole = absolute / MINOR_UNITS_PER_MAJOR;
+  const fraction = absolute % MINOR_UNITS_PER_MAJOR;
+  return `${negative ? "-" : ""}${whole.toString()}.${fraction.toString().padStart(2, "0")}`;
+}

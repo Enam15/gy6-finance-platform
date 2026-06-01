@@ -54,6 +54,22 @@ export class AccountRepository {
     });
   }
 
+  /**
+   * Active Business-category accounts only - the set of accounts that can
+   * hold real cash. Used by payment / transfer flows where the source or
+   * destination must be a Business account.
+   */
+  listBusinessAccounts(): Promise<Account[]> {
+    return this.db.account.findMany({
+      where: {
+        systemKey: null,
+        isActive: true,
+        category: { key: "BUSINESS" },
+      },
+      orderBy: { name: "asc" },
+    });
+  }
+
   create(data: CreateAccountData): Promise<Account> {
     return this.db.account.create({
       data: {

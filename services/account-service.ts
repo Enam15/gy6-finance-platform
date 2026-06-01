@@ -73,6 +73,11 @@ export class AccountService {
     return new AccountRepository(this.db).listVisible();
   }
 
+  /** Active Business-category accounts only - source/destination for cash flows. */
+  listBusinessAccounts(): Promise<Account[]> {
+    return new AccountRepository(this.db).listBusinessAccounts();
+  }
+
   /** Categories users can pick when creating an account. */
   listSelectableCategories(): Promise<AccountCategory[]> {
     return new AccountCategoryRepository(this.db).listSelectable();
