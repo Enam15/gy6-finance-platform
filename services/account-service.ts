@@ -11,6 +11,8 @@ import { ok, err, type Result } from "@/lib/result";
 import { AccountRepository } from "@/repositories/account-repository";
 import { AccountCategoryRepository } from "@/repositories/account-category-repository";
 import { AuditLogRepository } from "@/repositories/audit-log-repository";
+import { ExpenseEntryRepository } from "@/repositories/expense-entry-repository";
+import { IncomeEntryRepository } from "@/repositories/income-entry-repository";
 
 const createAccountSchema = z.object({
   categoryId: z.string().min(1, "A category is required"),
@@ -20,6 +22,16 @@ const createAccountSchema = z.object({
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+/** Bundled view of an account for the detail page. */
+export interface AccountDetail {
+  account: Account;
+  category: AccountCategory;
+  /** Sum of amount_due across CONFIRMED income entries where this account is the client. */
+  outstandingIncome: bigint;
+  /** Sum of amount_due across CONFIRMED expense entries where this account is the payee. */
+  outstandingExpense: bigint;
+}
 
 /**
  * Derive an account's normal balance from its category. In the movement-based
@@ -70,6 +82,32 @@ export class AccountService {
   async getAccount(id: string): Promise<Result<Account>> {
     const account = await new AccountRepository(this.db).findById(id);
     return account ? ok(account) : err(`Account ${id} was not found`);
+  }
+
+  /**
+   * Full account detail for the /accounts/[id] page: account, its category,
+   * and the two outstanding aggregates. The outstanding totals are 0 for
+   * accounts that aren't the client or payee on any confirmed entry.
+   */
+  async getDetail(id: string): Promise<Result<AccountDetail>> {
+    const account = await new AccountRepository(this.db).findById(id);
+    if (!account) return err(`Account ${id} was not found`);
+
+    const [category, outstandingIncome, outstandingExpense] = await Promise.all(
+      [
+        new AccountCategoryRepository(this.db).findById(account.categoryId),
+        new IncomeEntryRepository(this.db).sumOutstandingForClient(id),
+        new ExpenseEntryRepository(this.db).sumOutstandingForPayee(id),
+      ],
+    );
+
+    if (!category) {
+      return err(
+        `Category ${account.categoryId} was not found for account ${id}`,
+      );
+    }
+
+    return ok({ account, category, outstandingIncome, outstandingExpense });
   }
 
   /**

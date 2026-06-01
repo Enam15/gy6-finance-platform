@@ -71,4 +71,29 @@ export class StatementEntryRepository {
       orderBy: { createdAt: "asc" },
     });
   }
+
+  /**
+   * Most-recent ledger entries, newest first by effective date, then by
+   * created-at to break same-day ties. Used by the global /ledger feed.
+   */
+  listRecent(limit: number): Promise<StatementEntry[]> {
+    return this.db.statementEntry.findMany({
+      orderBy: [{ effectiveDate: "desc" }, { createdAt: "desc" }],
+      take: limit,
+    });
+  }
+
+  /**
+   * Entries touching `accountId` on either side (debit or credit), newest
+   * first. Used by per-account ledger drill-downs.
+   */
+  listByAccount(accountId: string, limit: number): Promise<StatementEntry[]> {
+    return this.db.statementEntry.findMany({
+      where: {
+        OR: [{ debitAccountId: accountId }, { creditAccountId: accountId }],
+      },
+      orderBy: [{ effectiveDate: "desc" }, { createdAt: "desc" }],
+      take: limit,
+    });
+  }
 }

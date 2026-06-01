@@ -50,6 +50,13 @@ export class IncomeService {
     return entries.map(withStatus);
   }
 
+  /** Sum of amount_due across this client account's CONFIRMED income entries. */
+  sumOutstandingForClient(clientAccountId: string): Promise<bigint> {
+    return new IncomeEntryRepository(this.db).sumOutstandingForClient(
+      clientAccountId,
+    );
+  }
+
   async getEntry(id: string): Promise<Result<IncomeEntryWithStatus>> {
     const entry = await new IncomeEntryRepository(this.db).findById(id);
     return entry

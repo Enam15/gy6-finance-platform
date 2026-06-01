@@ -50,6 +50,13 @@ export class ExpenseService {
     return entries.map(withStatus);
   }
 
+  /** Sum of amount_due across this payee account's CONFIRMED expense entries. */
+  sumOutstandingForPayee(payeeAccountId: string): Promise<bigint> {
+    return new ExpenseEntryRepository(this.db).sumOutstandingForPayee(
+      payeeAccountId,
+    );
+  }
+
   async getEntry(id: string): Promise<Result<ExpenseEntryWithStatus>> {
     const entry = await new ExpenseEntryRepository(this.db).findById(id);
     return entry

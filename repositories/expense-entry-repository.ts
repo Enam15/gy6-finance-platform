@@ -61,4 +61,16 @@ export class ExpenseEntryRepository {
       },
     });
   }
+
+  /**
+   * Sum of `amount_due` across CONFIRMED expense entries with this payee.
+   * DRAFT and REVERSED entries are excluded.
+   */
+  async sumOutstandingForPayee(payeeAccountId: string): Promise<bigint> {
+    const result = await this.db.expenseEntry.aggregate({
+      where: { payeeAccountId, state: "CONFIRMED" },
+      _sum: { amountDue: true },
+    });
+    return result._sum.amountDue ?? 0n;
+  }
 }

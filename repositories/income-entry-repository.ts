@@ -62,4 +62,17 @@ export class IncomeEntryRepository {
       },
     });
   }
+
+  /**
+   * Sum of `amount_due` across CONFIRMED income entries with this client.
+   * DRAFT and REVERSED entries are excluded - REVERSED already zeroed
+   * via the posting that ran amount_due back down.
+   */
+  async sumOutstandingForClient(clientAccountId: string): Promise<bigint> {
+    const result = await this.db.incomeEntry.aggregate({
+      where: { clientAccountId, state: "CONFIRMED" },
+      _sum: { amountDue: true },
+    });
+    return result._sum.amountDue ?? 0n;
+  }
 }
