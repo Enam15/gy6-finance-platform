@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: "Income", href: "/income" },
   { label: "Expenses", href: "/expenses" },
   { label: "Transfers", href: "/transfers" },
+  { label: "Adjustments", href: "/adjustments" },
   { label: "Ledger", href: "/ledger" },
 ];
 
