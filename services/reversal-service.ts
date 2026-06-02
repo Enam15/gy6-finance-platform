@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   PrismaClient,
   StatementEntry,
+  StatementSourceType,
 } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
@@ -231,6 +232,37 @@ export class ReversalService {
       if (error instanceof PostingFailure) return err(error.message);
       throw error;
     }
+  }
+
+  /**
+   * Reverse the transaction whose source is `(sourceType, sourceId)`. Looks
+   * up the original statement-entry group (skipping any REVERSAL entries)
+   * and delegates to reverseTransaction. Returns a 'not found' error if the
+   * source has no postings yet (e.g. a DRAFT income entry that was never
+   * confirmed).
+   */
+  async reverseSource(
+    sourceType: StatementSourceType,
+    sourceId: string,
+    reason: string,
+    options: ActorOptions = {},
+  ): Promise<Result<ReversalResult>> {
+    const entry = await this.db.statementEntry.findFirst({
+      where: {
+        sourceType,
+        sourceId,
+        entryType: { not: "REVERSAL" },
+      },
+    });
+    if (!entry) {
+      return err(
+        `No statement entries found for ${sourceType.toLowerCase()} ${sourceId}`,
+      );
+    }
+    return this.reverseTransaction(
+      { transactionGroupId: entry.transactionGroupId, reason },
+      options,
+    );
   }
 }
 
