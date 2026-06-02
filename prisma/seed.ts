@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import type {
   AccountCategoryKey,
   NormalBalance,
@@ -129,7 +130,76 @@ async function seed(): Promise<void> {
     );
   }
 
+  await seedAppUsers();
+
   console.log("Seed complete.");
+}
+
+interface AppUserSeed {
+  email: string;
+  name: string;
+  password: string;
+}
+
+/**
+ * Seed the two initial application users. Passwords come from env vars; if
+ * neither is set the seed quietly skips this section so the rest of the
+ * reference data still loads.
+ *
+ * Re-seeding does NOT reset an existing user's password unless
+ * SEED_RESET_PASSWORDS=1 is set; otherwise only name + isActive are
+ * refreshed. This means a user who has logged in and (eventually) changed
+ * their password won't have it silently overwritten.
+ */
+async function seedAppUsers(): Promise<void> {
+  const tashfeenPassword = process.env["SEED_TASHFEEN_PASSWORD"];
+  const itmamPassword = process.env["SEED_ITMAM_PASSWORD"];
+
+  const candidates: AppUserSeed[] = [];
+  if (tashfeenPassword) {
+    candidates.push({
+      email: process.env["SEED_TASHFEEN_EMAIL"] ?? "tashfeen@gy6.local",
+      name: "Tashfeen",
+      password: tashfeenPassword,
+    });
+  }
+  if (itmamPassword) {
+    candidates.push({
+      email: process.env["SEED_ITMAM_EMAIL"] ?? "itmam@gy6.local",
+      name: "Itmam",
+      password: itmamPassword,
+    });
+  }
+
+  if (candidates.length === 0) {
+    console.log(
+      "  app users: skipped (set SEED_TASHFEEN_PASSWORD and/or SEED_ITMAM_PASSWORD in .env)",
+    );
+    return;
+  }
+
+  const resetPasswords = process.env["SEED_RESET_PASSWORDS"] === "1";
+
+  for (const user of candidates) {
+    const passwordHash = await bcrypt.hash(user.password, 12);
+    await prisma.appUser.upsert({
+      where: { email: user.email },
+      create: {
+        email: user.email,
+        name: user.name,
+        passwordHash,
+        isActive: true,
+      },
+      update: {
+        name: user.name,
+        isActive: true,
+        ...(resetPasswords ? { passwordHash } : {}),
+      },
+    });
+    console.log(
+      `  app user: ${user.email}${resetPasswords ? " (password reset)" : ""}`,
+    );
+  }
 }
 
 seed()

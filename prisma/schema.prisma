@@ -346,6 +346,27 @@ model BalanceAdjustment {
   @@map("balance_adjustments")
 }
 
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+/// Internal application user. Authenticated via Credentials (email + bcrypt
+/// password hash). actorId/actorLabel on audit log rows trace back here, so
+/// every state-changing operation is attributable to a real person.
+/// Named `AppUser` to keep clear of the domain `Account` model.
+model AppUser {
+  id           String    @id @default(uuid(7))
+  email        String    @unique
+  name         String
+  passwordHash String    @map("password_hash")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("app_users")
+}
+
 /// File attachment metadata for an income or expense entry. The file itself
 /// lives in object storage under `storageKey`; upload wiring arrives later.
 /// Exactly one of incomeEntryId / expenseEntryId is set (DB check enforced).
