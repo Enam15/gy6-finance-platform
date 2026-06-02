@@ -23,6 +23,7 @@ import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateExpenseDialog } from "./_components/create-expense-dialog";
 import { ConfirmExpenseButton } from "./_components/confirm-button";
 import { PayExpenseButton } from "./_components/pay-expense-button";
+import { ReverseButton } from "@/components/reverse-button";
 
 export const dynamic = "force-dynamic";
 
@@ -165,21 +166,32 @@ export default async function ExpensesPage() {
                         {entry.status.replace(/_/g, " ")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {entry.state === "DRAFT" && (
-                        <ConfirmExpenseButton
-                          entryId={entry.id}
-                          description={entry.description}
-                        />
-                      )}
-                      {entry.state === "CONFIRMED" && entry.amountDue > 0n && (
-                        <PayExpenseButton
-                          entryId={entry.id}
-                          description={entry.description}
-                          amountDueMinor={entry.amountDue.toString()}
-                          businessAccounts={businessAccountOptions}
-                        />
-                      )}
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        {entry.state === "DRAFT" && (
+                          <ConfirmExpenseButton
+                            entryId={entry.id}
+                            description={entry.description}
+                          />
+                        )}
+                        {entry.state === "CONFIRMED" &&
+                          entry.amountDue > 0n && (
+                            <PayExpenseButton
+                              entryId={entry.id}
+                              description={entry.description}
+                              amountDueMinor={entry.amountDue.toString()}
+                              businessAccounts={businessAccountOptions}
+                            />
+                          )}
+                        {entry.state === "CONFIRMED" &&
+                          entry.amountPaid === 0n && (
+                            <ReverseButton
+                              apiPath={`/api/expenses/${entry.id}/reverse`}
+                              what="Expense"
+                              description={entry.description}
+                            />
+                          )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -13,15 +13,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { TransferService } from "@/services/transfer-service";
 import { formatMoney, money } from "@/lib/money";
+import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateTransferDialog } from "./_components/create-transfer-dialog";
+import { ReverseButton } from "@/components/reverse-button";
 
 export const dynamic = "force-dynamic";
 
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function stateBadgeVariant(state: EntryState): BadgeVariant {
+  switch (state) {
+    case "DRAFT":
+      return "outline";
+    case "CONFIRMED":
+      return "default";
+    case "REVERSED":
+      return "destructive";
+  }
 }
 
 export default async function TransfersPage() {
@@ -82,6 +98,8 @@ export default async function TransfersPage() {
                   <TableHead>To</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,6 +119,25 @@ export default async function TransfersPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {transfer.description ?? ""}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={stateBadgeVariant(transfer.state)}>
+                        {transfer.state}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        {transfer.state === "CONFIRMED" && (
+                          <ReverseButton
+                            apiPath={`/api/transfers/${transfer.id}/reverse`}
+                            what="Transfer"
+                            description={
+                              transfer.description ??
+                              `${accountNameById.get(transfer.fromAccountId) ?? "Unknown"} -> ${accountNameById.get(transfer.toAccountId) ?? "Unknown"}`
+                            }
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -17,6 +17,7 @@ import { AccountService } from "@/services/account-service";
 import { BalanceAdjustmentService } from "@/services/balance-adjustment-service";
 import { formatMoney, money } from "@/lib/money";
 import { CreateAdjustmentDialog } from "./_components/create-adjustment-dialog";
+import { ReverseButton } from "@/components/reverse-button";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,6 @@ export default async function AdjustmentsPage() {
     accountService.listVisible(),
   ]);
 
-  // Account lookup for displaying names in the history; the dialog needs
-  // the full visible-account list with balances so it can show the user
-  // what they're adjusting from.
   const accountNameById = new Map(
     visibleAccounts.map((a) => [a.id, a.name]),
   );
@@ -89,32 +87,44 @@ export default async function AdjustmentsPage() {
                   <TableHead className="text-right">New</TableHead>
                   <TableHead className="text-right">Difference</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {adjustments.map((adjustment) => (
-                  <TableRow key={adjustment.id}>
-                    <TableCell className="tabular-nums">
-                      {formatDate(adjustment.effectiveDate)}
-                    </TableCell>
-                    <TableCell>
-                      {accountNameById.get(adjustment.accountId) ?? "Unknown"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(money(adjustment.previousBalance))}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(money(adjustment.newBalance))}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {adjustment.difference > 0n ? "+" : ""}
-                      {formatMoney(money(adjustment.difference))}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {adjustment.reason}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {adjustments.map((adjustment) => {
+                  const accountName =
+                    accountNameById.get(adjustment.accountId) ?? "Unknown";
+                  return (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="tabular-nums">
+                        {formatDate(adjustment.effectiveDate)}
+                      </TableCell>
+                      <TableCell>{accountName}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(money(adjustment.previousBalance))}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(money(adjustment.newBalance))}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {adjustment.difference > 0n ? "+" : ""}
+                        {formatMoney(money(adjustment.difference))}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {adjustment.reason}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <ReverseButton
+                            apiPath={`/api/adjustments/${adjustment.id}/reverse`}
+                            what="Adjustment"
+                            description={`${accountName}: ${adjustment.reason}`}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
