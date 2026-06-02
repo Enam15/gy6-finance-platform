@@ -23,6 +23,9 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
 
+  // The login page renders its own centered layout; skip the sidebar there.
+  if (pathname === "/login") return null;
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="px-6 py-5">
