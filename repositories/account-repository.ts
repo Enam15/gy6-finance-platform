@@ -70,6 +70,22 @@ export class AccountRepository {
     });
   }
 
+  /**
+   * Sum of balances across active Business-category accounts. This is the
+   * "cash on hand" KPI - what GY6 actually has in operational accounts.
+   */
+  async sumCashOnHand(): Promise<bigint> {
+    const result = await this.db.account.aggregate({
+      where: {
+        systemKey: null,
+        isActive: true,
+        category: { key: "BUSINESS" },
+      },
+      _sum: { balance: true },
+    });
+    return result._sum.balance ?? 0n;
+  }
+
   create(data: CreateAccountData): Promise<Account> {
     return this.db.account.create({
       data: {
