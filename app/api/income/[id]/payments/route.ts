@@ -1,4 +1,5 @@
 import { PaymentService } from "@/services/payment-service";
+import { getActor } from "@/lib/auth";
 import { jsonResponse } from "@/lib/json";
 
 /**
@@ -13,6 +14,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const actor = await getActor();
   const { id } = await context.params;
 
   let body: unknown;
@@ -31,12 +33,16 @@ export async function POST(
     );
   }
 
-  // Merge the route param into the service's input shape - the path is
-  // the source of truth for which entry this payment lands on.
-  const result = await new PaymentService().recordIncomePayment({
-    ...(body as Record<string, unknown>),
-    incomeEntryId: id,
-  });
+  const result = await new PaymentService().recordIncomePayment(
+    {
+      ...(body as Record<string, unknown>),
+      incomeEntryId: id,
+    },
+    {
+      actorId: actor?.id ?? null,
+      actorLabel: actor?.label ?? null,
+    },
+  );
 
   if (!result.ok) {
     return jsonResponse({ error: result.error }, { status: 400 });

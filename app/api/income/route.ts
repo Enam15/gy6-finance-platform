@@ -1,4 +1,5 @@
 import { IncomeService } from "@/services/income-service";
+import { getActor } from "@/lib/auth";
 import { jsonResponse } from "@/lib/json";
 
 /**
@@ -13,6 +14,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const actor = await getActor();
+
   let body: unknown;
   try {
     body = await request.json();
@@ -23,7 +26,10 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const result = await new IncomeService().createDraft(body);
+  const result = await new IncomeService().createDraft(body, {
+    actorId: actor?.id ?? null,
+    actorLabel: actor?.label ?? null,
+  });
   if (!result.ok) {
     return jsonResponse({ error: result.error }, { status: 400 });
   }

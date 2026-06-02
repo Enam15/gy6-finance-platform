@@ -31,7 +31,10 @@ export class TransactionCategoryService {
     return new TransactionCategoryRepository(this.db).listAll();
   }
 
-  async create(input: unknown): Promise<Result<TransactionCategory>> {
+  async create(
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<TransactionCategory>> {
     const parsed = createSchema.safeParse(input);
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => i.message).join("; "));
@@ -49,6 +52,8 @@ export class TransactionCategoryService {
         entityId: created.id,
         summary: `Transaction category "${created.name}" created (${created.kind})`,
         after: { id: created.id, name: created.name, kind: created.kind },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
       });
       return created;
     });

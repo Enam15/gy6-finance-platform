@@ -119,7 +119,10 @@ export class AccountService {
    * Create a user-facing account. System accounts are seeded, never created
    * through this path. `normalBalance` is derived from the category.
    */
-  async createAccount(input: unknown): Promise<Result<Account>> {
+  async createAccount(
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<Account>> {
     const parsed = createAccountSchema.safeParse(input);
     if (!parsed.success) {
       return err(parsed.error.issues.map((issue) => issue.message).join("; "));
@@ -157,6 +160,8 @@ export class AccountService {
           categoryId: created.categoryId,
           normalBalance: created.normalBalance,
         },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
       });
       return created;
     });

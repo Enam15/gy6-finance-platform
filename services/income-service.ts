@@ -64,7 +64,10 @@ export class IncomeService {
       : err(`Income entry ${id} was not found`);
   }
 
-  async createDraft(input: unknown): Promise<Result<IncomeEntry>> {
+  async createDraft(
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<IncomeEntry>> {
     const parsed = createSchema.safeParse(input);
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => i.message).join("; "));
@@ -103,6 +106,8 @@ export class IncomeService {
           categoryId: created.categoryId,
           totalAmount: created.totalAmount.toString(),
         },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
       });
       return created;
     });
