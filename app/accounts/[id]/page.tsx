@@ -20,6 +20,7 @@ import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
+import { ExportLinks } from "@/components/export-links";
 
 export const dynamic = "force-dynamic";
 
@@ -72,20 +73,23 @@ export default async function AccountDetailPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
-      <div>
-        <Link
-          href="/accounts"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          &larr; Back to accounts
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          {account.name}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {category.name} account
-          {account.description ? ` - ${account.description}` : ""}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link
+            href="/accounts"
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            &larr; Back to accounts
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+            {account.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {category.name} account
+            {account.description ? ` - ${account.description}` : ""}
+          </p>
+        </div>
+        <ExportLinks basePath={`/api/accounts/${id}/export`} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
