@@ -24,6 +24,7 @@ import { CreateIncomeDialog } from "./_components/create-income-dialog";
 import { ConfirmIncomeButton } from "./_components/confirm-button";
 import { PayIncomeButton } from "./_components/pay-income-button";
 import { ReverseButton } from "@/components/reverse-button";
+import { ExportLinks } from "@/components/export-links";
 
 export const dynamic = "force-dynamic";
 
@@ -90,20 +91,23 @@ export default async function IncomePage() {
             separate postings that reduce amount_due.
           </p>
         </div>
-        {canCreate ? (
-          <CreateIncomeDialog
-            accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
-            categories={incomeCategories.map((c) => ({
-              id: c.id,
-              name: c.name,
-            }))}
-          />
-        ) : (
-          <span className="max-w-xs text-right text-sm text-muted-foreground">
-            Create at least one account and one income category to record
-            income.
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {canCreate ? (
+            <CreateIncomeDialog
+              accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+              categories={incomeCategories.map((c) => ({
+                id: c.id,
+                name: c.name,
+              }))}
+            />
+          ) : (
+            <span className="max-w-xs text-right text-sm text-muted-foreground">
+              Create at least one account and one income category to record
+              income.
+            </span>
+          )}
+          <ExportLinks basePath="/api/income/export" />
+        </div>
       </div>
 
       <Card>

@@ -24,6 +24,7 @@ import { CreateExpenseDialog } from "./_components/create-expense-dialog";
 import { ConfirmExpenseButton } from "./_components/confirm-button";
 import { PayExpenseButton } from "./_components/pay-expense-button";
 import { ReverseButton } from "@/components/reverse-button";
+import { ExportLinks } from "@/components/export-links";
 
 export const dynamic = "force-dynamic";
 
@@ -90,20 +91,23 @@ export default async function ExpensesPage() {
             separate postings that reduce amount_due.
           </p>
         </div>
-        {canCreate ? (
-          <CreateExpenseDialog
-            accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
-            categories={expenseCategories.map((c) => ({
-              id: c.id,
-              name: c.name,
-            }))}
-          />
-        ) : (
-          <span className="max-w-xs text-right text-sm text-muted-foreground">
-            Create at least one account and one expense category to record
-            expenses.
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {canCreate ? (
+            <CreateExpenseDialog
+              accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+              categories={expenseCategories.map((c) => ({
+                id: c.id,
+                name: c.name,
+              }))}
+            />
+          ) : (
+            <span className="max-w-xs text-right text-sm text-muted-foreground">
+              Create at least one account and one expense category to record
+              expenses.
+            </span>
+          )}
+          <ExportLinks basePath="/api/expenses/export" />
+        </div>
       </div>
 
       <Card>
