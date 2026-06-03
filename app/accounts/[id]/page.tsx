@@ -36,6 +36,7 @@ function entryTypeBadgeVariant(type: StatementEntryType): BadgeVariant {
     case "EXPENSE":
       return "default";
     case "PAYMENT":
+    case "DISTRIBUTION":
       return "secondary";
     case "TRANSFER":
     case "ADJUSTMENT":

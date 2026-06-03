@@ -224,6 +224,7 @@ function entryTypeToAuditAction(entryType: StatementEntryType): AuditAction {
     case "OPENING_BALANCE":
       return "CONFIRM";
     case "TRANSFER":
+    case "DISTRIBUTION":
       return "TRANSFER";
     case "ADJUSTMENT":
       return "ADJUST";

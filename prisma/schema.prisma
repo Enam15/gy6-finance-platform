@@ -67,6 +67,7 @@ enum StatementEntryType {
   ADJUSTMENT
   REVERSAL
   OPENING_BALANCE
+  DISTRIBUTION
 }
 
 /// The kind of operational record a statement entry was posted from.
@@ -76,6 +77,7 @@ enum StatementSourceType {
   PAYMENT
   TRANSFER
   BALANCE_ADJUSTMENT
+  DISTRIBUTION
 }
 
 /// The kind of change recorded in an audit log entry.

@@ -179,6 +179,12 @@ export class ReversalService {
             // mirrored posting below restores the prior balance.
             break;
           }
+          case "DISTRIBUTION": {
+            // The Distribution + DistributionShare rows stay as historical
+            // evidence; the mirrored postings move the cash back into the
+            // Business source account.
+            break;
+          }
         }
 
         // Build mirrored postings.
