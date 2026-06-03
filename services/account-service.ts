@@ -78,6 +78,11 @@ export class AccountService {
     return new AccountRepository(this.db).listBusinessAccounts();
   }
 
+  /** Sigma balance over active Business-category accounts (cash on hand KPI). */
+  sumCashOnHand(): Promise<bigint> {
+    return new AccountRepository(this.db).sumCashOnHand();
+  }
+
   /** Categories users can pick when creating an account. */
   listSelectableCategories(): Promise<AccountCategory[]> {
     return new AccountCategoryRepository(this.db).listSelectable();

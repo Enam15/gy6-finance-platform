@@ -57,6 +57,28 @@ export class ExpenseService {
     );
   }
 
+  /** Sigma total_amount on CONFIRMED expense entries with entry_date in [start, endExclusive). */
+  sumTotalInPeriod(start: Date, endExclusive: Date): Promise<bigint> {
+    return new ExpenseEntryRepository(this.db).sumTotalInPeriod(
+      start,
+      endExclusive,
+    );
+  }
+
+  /** Sigma amount_due across all CONFIRMED expense entries (global payables). */
+  sumOutstandingTotal(): Promise<bigint> {
+    return new ExpenseEntryRepository(this.db).sumOutstandingTotal();
+  }
+
+  /** Monthly CONFIRMED-expense totals since `startInclusive`. See repo for shape. */
+  monthlyTotalsSince(
+    startInclusive: Date,
+  ): Promise<{ month: Date; total: bigint }[]> {
+    return new ExpenseEntryRepository(this.db).monthlyTotalsSince(
+      startInclusive,
+    );
+  }
+
   async getEntry(id: string): Promise<Result<ExpenseEntryWithStatus>> {
     const entry = await new ExpenseEntryRepository(this.db).findById(id);
     return entry

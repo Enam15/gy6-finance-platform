@@ -57,6 +57,28 @@ export class IncomeService {
     );
   }
 
+  /** Sigma total_amount on CONFIRMED income entries with entry_date in [start, endExclusive). */
+  sumTotalInPeriod(start: Date, endExclusive: Date): Promise<bigint> {
+    return new IncomeEntryRepository(this.db).sumTotalInPeriod(
+      start,
+      endExclusive,
+    );
+  }
+
+  /** Sigma amount_due across all CONFIRMED income entries (global receivables). */
+  sumOutstandingTotal(): Promise<bigint> {
+    return new IncomeEntryRepository(this.db).sumOutstandingTotal();
+  }
+
+  /** Monthly CONFIRMED-income totals since `startInclusive`. See repo for shape. */
+  monthlyTotalsSince(
+    startInclusive: Date,
+  ): Promise<{ month: Date; total: bigint }[]> {
+    return new IncomeEntryRepository(this.db).monthlyTotalsSince(
+      startInclusive,
+    );
+  }
+
   async getEntry(id: string): Promise<Result<IncomeEntryWithStatus>> {
     const entry = await new IncomeEntryRepository(this.db).findById(id);
     return entry
