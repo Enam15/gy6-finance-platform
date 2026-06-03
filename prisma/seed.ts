@@ -131,6 +131,7 @@ async function seed(): Promise<void> {
   }
 
   await seedAppUsers();
+  await seedPartners();
 
   console.log("Seed complete.");
 }
@@ -198,6 +199,82 @@ async function seedAppUsers(): Promise<void> {
     });
     console.log(
       `  app user: ${user.email}${resetPasswords ? " (password reset)" : ""}`,
+    );
+  }
+}
+
+interface PartnerSeed {
+  /** Display name + unique key. */
+  name: string;
+  /** Founder-category Account name that receives this partner's distributions. */
+  founderAccountName: string;
+  /** Initial share ratio numerator. Denominator is sigma at distribution time. */
+  ratio: number;
+}
+
+/**
+ * Seed the GY6 profit-distribution partners and their initial share slices.
+ *
+ * Idempotent: each Founder account is created only if missing (matched by
+ * name + FOUNDER category), Partner rows upsert on `name`, and
+ * PartnerShareSlice rows upsert on (partnerId, effectiveFrom).
+ *
+ * Initial split is Tashfeen 65 / Itmam 35 effective 2026-01-01 - matches
+ * the locked PRD decision; any 2026 quarter resolves to this slice.
+ */
+async function seedPartners(): Promise<void> {
+  const founderCat = await prisma.accountCategory.findUniqueOrThrow({
+    where: { key: "FOUNDER" },
+  });
+  const effectiveFrom = new Date(Date.UTC(2026, 0, 1));
+
+  const partners: PartnerSeed[] = [
+    { name: "Tashfeen", founderAccountName: "Tashfeen Founder", ratio: 65 },
+    { name: "Itmam", founderAccountName: "Itmam Founder", ratio: 35 },
+  ];
+
+  for (const p of partners) {
+    let account = await prisma.account.findFirst({
+      where: { name: p.founderAccountName, categoryId: founderCat.id },
+    });
+    if (!account) {
+      account = await prisma.account.create({
+        data: {
+          categoryId: founderCat.id,
+          name: p.founderAccountName,
+          normalBalance: "DEBIT",
+          description: `Profit-distribution account for ${p.name}`,
+        },
+      });
+    }
+
+    const partner = await prisma.partner.upsert({
+      where: { name: p.name },
+      create: {
+        name: p.name,
+        founderAccountId: account.id,
+        isActive: true,
+      },
+      update: { isActive: true },
+    });
+
+    await prisma.partnerShareSlice.upsert({
+      where: {
+        partnerId_effectiveFrom: {
+          partnerId: partner.id,
+          effectiveFrom,
+        },
+      },
+      create: {
+        partnerId: partner.id,
+        ratio: p.ratio,
+        effectiveFrom,
+      },
+      update: { ratio: p.ratio },
+    });
+
+    console.log(
+      `  partner: ${p.name} (ratio ${p.ratio}, founder=${p.founderAccountName})`,
     );
   }
 }

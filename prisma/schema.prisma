@@ -139,6 +139,8 @@ model Account {
   transfersFrom      Transfer[]          @relation("TransferFrom")
   transfersTo        Transfer[]          @relation("TransferTo")
   balanceAdjustments BalanceAdjustment[]
+  partner            Partner?
+  distributions      Distribution[]
 
   @@index([categoryId])
   @@map("accounts")
@@ -344,6 +346,86 @@ model BalanceAdjustment {
 
   @@index([accountId])
   @@map("balance_adjustments")
+}
+
+// ---------------------------------------------------------------------------
+// Profit distribution
+// ---------------------------------------------------------------------------
+
+/// A profit-distribution partner. Each Partner is bound to one Founder-
+/// category Account where their distributions land. Share ratios are
+/// time-sliced via PartnerShareSlice.
+model Partner {
+  id               String              @id @default(uuid(7))
+  name             String              @unique
+  founderAccountId String              @unique @map("founder_account_id")
+  isActive         Boolean             @default(true) @map("is_active")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  founderAccount   Account             @relation(fields: [founderAccountId], references: [id])
+  shareSlices      PartnerShareSlice[]
+  shares           DistributionShare[]
+
+  @@map("partners")
+}
+
+/// Time-sliced share ratio for a partner. The slice active at a given
+/// distribution date is the most recent one with effective_from <= date.
+/// Ratios are integer numerators; the denominator (sum across active
+/// partners) is computed and snapshotted at distribution time.
+model PartnerShareSlice {
+  id            String   @id @default(uuid(7))
+  partnerId     String   @map("partner_id")
+  ratio         Int
+  effectiveFrom DateTime @db.Date @map("effective_from")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  partner       Partner  @relation(fields: [partnerId], references: [id])
+
+  @@unique([partnerId, effectiveFrom])
+  @@map("partner_share_slices")
+}
+
+/// A single quarterly profit-distribution event. Multiple distributions per
+/// quarter are allowed (top-ups, corrections); each is its own immutable
+/// row. Per-partner postings move cash from the Business source account
+/// into each partner's Founder account in one ledger transaction.
+model Distribution {
+  id              String              @id @default(uuid(7))
+  quarterStart    DateTime            @db.Date @map("quarter_start")
+  netAmount       BigInt              @map("net_amount")
+  sourceAccountId String              @map("source_account_id")
+  description     String?
+  effectiveDate   DateTime            @db.Date @map("effective_date")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  createdBy       String?             @map("created_by")
+
+  sourceAccount   Account             @relation(fields: [sourceAccountId], references: [id])
+  shares          DistributionShare[]
+
+  @@index([quarterStart])
+  @@index([sourceAccountId])
+  @@map("distributions")
+}
+
+/// The per-partner allocation of one distribution. Snapshots both the
+/// numerator (ratio) and denominator (ratioDenominator) used at the time,
+/// so the historical record stands on its own without re-resolving slices.
+model DistributionShare {
+  id               String       @id @default(uuid(7))
+  distributionId   String       @map("distribution_id")
+  partnerId        String       @map("partner_id")
+  ratio            Int
+  ratioDenominator Int          @map("ratio_denominator")
+  amount           BigInt
+
+  distribution     Distribution @relation(fields: [distributionId], references: [id])
+  partner          Partner      @relation(fields: [partnerId], references: [id])
+
+  @@index([distributionId])
+  @@index([partnerId])
+  @@map("distribution_shares")
 }
 
 // ---------------------------------------------------------------------------
