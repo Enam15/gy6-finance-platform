@@ -18,6 +18,7 @@ import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
+import { ExportLinks } from "@/components/export-links";
 
 export const dynamic = "force-dynamic";
 
@@ -56,13 +57,16 @@ export default async function LedgerPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Ledger</h1>
-        <p className="text-sm text-muted-foreground">
-          Immutable double-entry ledger. Every posting recorded here is
-          permanent - corrections happen by reversing or adjusting, never by
-          editing.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Ledger</h1>
+          <p className="text-sm text-muted-foreground">
+            Immutable double-entry ledger. Every posting recorded here is
+            permanent - corrections happen by reversing or adjusting, never
+            by editing.
+          </p>
+        </div>
+        <ExportLinks basePath="/api/ledger/export" />
       </div>
 
       <Card>

@@ -36,4 +36,26 @@ export class StatementEntryService {
       limit,
     );
   }
+
+  /**
+   * Every ledger entry. Used by /api/ledger/export. Order is by
+   * effectiveDate then createdAt; default is desc to match the page view.
+   */
+  listAll(order: "asc" | "desc" = "desc"): Promise<StatementEntry[]> {
+    return new StatementEntryRepository(this.db).listAll(order);
+  }
+
+  /**
+   * Every ledger entry touching `accountId` on either side. Default order
+   * is ascending so the per-account statement reads chronologically.
+   */
+  listAllByAccount(
+    accountId: string,
+    order: "asc" | "desc" = "asc",
+  ): Promise<StatementEntry[]> {
+    return new StatementEntryRepository(this.db).listAllByAccount(
+      accountId,
+      order,
+    );
+  }
 }

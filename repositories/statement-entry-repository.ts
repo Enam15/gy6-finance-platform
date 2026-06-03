@@ -96,4 +96,31 @@ export class StatementEntryRepository {
       take: limit,
     });
   }
+
+  /**
+   * Every ledger entry. Used by exports - no `take` cap. Order is by
+   * effectiveDate then createdAt so callers can pick chronological (asc,
+   * natural for a statement) or newest-first (desc, natural for the UI).
+   */
+  listAll(order: "asc" | "desc" = "desc"): Promise<StatementEntry[]> {
+    return this.db.statementEntry.findMany({
+      orderBy: [{ effectiveDate: order }, { createdAt: order }],
+    });
+  }
+
+  /**
+   * Every ledger entry touching `accountId` on either side. Used by the
+   * per-account statement export.
+   */
+  listAllByAccount(
+    accountId: string,
+    order: "asc" | "desc" = "asc",
+  ): Promise<StatementEntry[]> {
+    return this.db.statementEntry.findMany({
+      where: {
+        OR: [{ debitAccountId: accountId }, { creditAccountId: accountId }],
+      },
+      orderBy: [{ effectiveDate: order }, { createdAt: order }],
+    });
+  }
 }
