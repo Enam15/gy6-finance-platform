@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { label: "Transfers", href: "/transfers" },
   { label: "Adjustments", href: "/adjustments" },
   { label: "Distributions", href: "/distributions" },
+  { label: "Renewals", href: "/renewals" },
   { label: "Ledger", href: "/ledger" },
 ];
 
