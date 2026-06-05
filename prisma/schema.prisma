@@ -58,6 +58,14 @@ enum CategoryKind {
   EXPENSE
 }
 
+/// The recurrence unit for a renewal template (e.g. every 1 MONTH).
+enum RecurrenceUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
 /// The nature of a ledger posting.
 enum StatementEntryType {
   INCOME
@@ -143,6 +151,7 @@ model Account {
   balanceAdjustments BalanceAdjustment[]
   partner            Partner?
   distributions      Distribution[]
+  renewalTemplates   RenewalTemplate[]
 
   @@index([categoryId])
   @@map("accounts")
@@ -178,8 +187,9 @@ model TransactionCategory {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  incomeEntries  IncomeEntry[]
-  expenseEntries ExpenseEntry[]
+  incomeEntries    IncomeEntry[]
+  expenseEntries   ExpenseEntry[]
+  renewalTemplates RenewalTemplate[]
 
   @@unique([name, kind])
   @@map("transaction_categories")
@@ -238,21 +248,24 @@ model IncomeEntry {
   amountDue       BigInt     @map("amount_due")
   entryDate       DateTime   @db.Date @map("entry_date")
   paymentDueOn    DateTime   @db.Date @map("payment_due_on")
-  state           EntryState @default(DRAFT)
-  confirmedAt     DateTime?  @map("confirmed_at")
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
-  createdBy       String?    @map("created_by")
+  state             EntryState @default(DRAFT)
+  confirmedAt       DateTime?  @map("confirmed_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  createdBy         String?    @map("created_by")
+  renewalTemplateId String?    @map("renewal_template_id")
 
-  clientAccount Account             @relation(fields: [clientAccountId], references: [id])
-  category      TransactionCategory @relation(fields: [categoryId], references: [id])
-  payments      Payment[]
-  attachments   Attachment[]
+  clientAccount   Account             @relation(fields: [clientAccountId], references: [id])
+  category        TransactionCategory @relation(fields: [categoryId], references: [id])
+  payments        Payment[]
+  attachments     Attachment[]
+  renewalTemplate RenewalTemplate?    @relation(fields: [renewalTemplateId], references: [id])
 
   @@index([clientAccountId])
   @@index([categoryId])
   @@index([state])
   @@index([paymentDueOn])
+  @@index([renewalTemplateId])
   @@map("income_entries")
 }
 
@@ -267,21 +280,24 @@ model ExpenseEntry {
   amountDue      BigInt     @map("amount_due")
   entryDate      DateTime   @db.Date @map("entry_date")
   paymentDueOn   DateTime   @db.Date @map("payment_due_on")
-  state          EntryState @default(DRAFT)
-  confirmedAt    DateTime?  @map("confirmed_at")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
-  createdBy      String?    @map("created_by")
+  state             EntryState @default(DRAFT)
+  confirmedAt       DateTime?  @map("confirmed_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  createdBy         String?    @map("created_by")
+  renewalTemplateId String?    @map("renewal_template_id")
 
-  payeeAccount Account             @relation(fields: [payeeAccountId], references: [id])
-  category     TransactionCategory @relation(fields: [categoryId], references: [id])
-  payments     Payment[]
-  attachments  Attachment[]
+  payeeAccount    Account             @relation(fields: [payeeAccountId], references: [id])
+  category        TransactionCategory @relation(fields: [categoryId], references: [id])
+  payments        Payment[]
+  attachments     Attachment[]
+  renewalTemplate RenewalTemplate?    @relation(fields: [renewalTemplateId], references: [id])
 
   @@index([payeeAccountId])
   @@index([categoryId])
   @@index([state])
   @@index([paymentDueOn])
+  @@index([renewalTemplateId])
   @@map("expense_entries")
 }
 
@@ -348,6 +364,47 @@ model BalanceAdjustment {
 
   @@index([accountId])
   @@map("balance_adjustments")
+}
+
+// ---------------------------------------------------------------------------
+// Recurring renewals
+// ---------------------------------------------------------------------------
+
+/// A recurring income or expense template. "Generate due renewals" reads
+/// every active template whose nextRunOn has arrived and materialises a new
+/// DRAFT entry from it - it never auto-posts. The user reviews and confirms
+/// each generated draft. `accountId` is the client account when kind=INCOME
+/// or the payee account when kind=EXPENSE; the service validates that the
+/// category's kind matches. `paymentTermsDays` becomes the offset from a
+/// generated entry's entryDate to its paymentDueOn.
+model RenewalTemplate {
+  id               String         @id @default(uuid(7))
+  kind             CategoryKind
+  name             String
+  accountId        String         @map("account_id")
+  categoryId       String         @map("category_id")
+  description      String
+  totalAmount      BigInt         @map("total_amount")
+  paymentTermsDays Int            @default(0) @map("payment_terms_days")
+  intervalCount    Int            @map("interval_count")
+  intervalUnit     RecurrenceUnit @map("interval_unit")
+  nextRunOn        DateTime       @db.Date @map("next_run_on")
+  endOn            DateTime?      @db.Date @map("end_on")
+  isActive         Boolean        @default(true) @map("is_active")
+  lastGeneratedAt  DateTime?      @map("last_generated_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  createdBy        String?        @map("created_by")
+
+  account        Account             @relation(fields: [accountId], references: [id])
+  category       TransactionCategory @relation(fields: [categoryId], references: [id])
+  incomeEntries  IncomeEntry[]
+  expenseEntries ExpenseEntry[]
+
+  @@index([isActive, nextRunOn])
+  @@index([accountId])
+  @@index([categoryId])
+  @@map("renewal_templates")
 }
 
 // ---------------------------------------------------------------------------
