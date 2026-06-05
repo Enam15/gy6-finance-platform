@@ -12,6 +12,8 @@ export interface CreateExpenseEntryData {
   entryDate: Date;
   paymentDueOn: Date;
   createdBy?: string | null;
+  /** Set when this entry was generated from a renewal template. */
+  renewalTemplateId?: string | null;
 }
 
 /**
@@ -48,6 +50,7 @@ export class ExpenseEntryRepository {
         entryDate: data.entryDate,
         paymentDueOn: data.paymentDueOn,
         createdBy: data.createdBy ?? null,
+        renewalTemplateId: data.renewalTemplateId ?? null,
       },
     });
   }

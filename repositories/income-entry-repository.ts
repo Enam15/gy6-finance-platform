@@ -12,6 +12,8 @@ export interface CreateIncomeEntryData {
   entryDate: Date;
   paymentDueOn: Date;
   createdBy?: string | null;
+  /** Set when this entry was generated from a renewal template. */
+  renewalTemplateId?: string | null;
 }
 
 /**
@@ -48,6 +50,7 @@ export class IncomeEntryRepository {
         entryDate: data.entryDate,
         paymentDueOn: data.paymentDueOn,
         createdBy: data.createdBy ?? null,
+        renewalTemplateId: data.renewalTemplateId ?? null,
       },
     });
   }

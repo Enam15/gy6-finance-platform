@@ -11,6 +11,8 @@
  *     and put rows on the wrong side of the cut.
  */
 
+import type { RecurrenceUnit } from "@/lib/generated/prisma/client";
+
 /** Start of the calendar quarter containing `at` (midnight UTC). */
 export function quarterStart(at: Date = new Date()): Date {
   const y = at.getUTCFullYear();
@@ -61,4 +63,65 @@ export function monthRangesBack(n: number, at: Date = new Date()): Date[] {
  */
 export function monthKey(d: Date): string {
   return d.toISOString().slice(0, 7);
+}
+
+/** Midnight UTC of today's date (date-only, no time component). */
+export function todayUtc(at: Date = new Date()): Date {
+  return new Date(
+    Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()),
+  );
+}
+
+/**
+ * Add a whole number of days to a UTC-midnight date, staying at UTC
+ * midnight. Safe across month/year boundaries (Date.UTC normalises).
+ */
+export function addDaysUtc(d: Date, days: number): Date {
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + days),
+  );
+}
+
+/**
+ * Add `months` calendar months to a UTC date, clamping the day to the last
+ * day of the target month (Jan 31 + 1 month -> Feb 28, or Feb 29 in a leap
+ * year). Note: repeated monthly advances from a month-end start "drift"
+ * earlier and do not recover the original day (Jan 31 -> Feb 28 -> Mar 28).
+ * Acceptable for renewals, which are typically anchored to early-month
+ * dates; an anchor-day field would be over-engineering here.
+ */
+function addMonthsUtc(d: Date, months: number): Date {
+  const day = d.getUTCDate();
+  const total = d.getUTCMonth() + months;
+  const targetYear = d.getUTCFullYear() + Math.floor(total / 12);
+  const targetMonth = ((total % 12) + 12) % 12;
+  // Day 0 of the month after target = last day of target month.
+  const lastDay = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0),
+  ).getUTCDate();
+  return new Date(
+    Date.UTC(targetYear, targetMonth, Math.min(day, lastDay)),
+  );
+}
+
+/**
+ * Advance a date by one recurrence step (`count` x `unit`), in UTC, with
+ * month/year arithmetic clamped to valid days. Used to walk a renewal
+ * template's nextRunOn forward.
+ */
+export function advanceByRecurrence(
+  d: Date,
+  count: number,
+  unit: RecurrenceUnit,
+): Date {
+  switch (unit) {
+    case "DAY":
+      return addDaysUtc(d, count);
+    case "WEEK":
+      return addDaysUtc(d, count * 7);
+    case "MONTH":
+      return addMonthsUtc(d, count);
+    case "YEAR":
+      return addMonthsUtc(d, count * 12);
+  }
 }
