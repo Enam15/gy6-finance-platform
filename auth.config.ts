@@ -14,6 +14,10 @@ import type { NextAuthConfig } from "next-auth";
  * page (`/login`).
  */
 export const authConfig = {
+  // Trust the deployment host when building callback URLs. Vercel is
+  // auto-trusted, but setting this explicitly keeps auth working behind a
+  // custom domain or any non-Vercel host.
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
