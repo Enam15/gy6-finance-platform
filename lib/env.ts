@@ -9,6 +9,9 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  // Direct (unpooled) URL for the Prisma CLI / migrations. Optional at
+  // runtime - the app connects via DATABASE_URL.
+  DIRECT_URL: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

@@ -180,8 +180,16 @@ async function seedAppUsers(): Promise<void> {
   }
 
   const resetPasswords = process.env["SEED_RESET_PASSWORDS"] === "1";
+  // In production, refuse to seed weak credentials - a finance app must not
+  // go live with a throwaway password. Dev/test stay permissive.
+  const minPasswordLength = process.env["NODE_ENV"] === "production" ? 12 : 1;
 
   for (const user of candidates) {
+    if (user.password.length < minPasswordLength) {
+      throw new Error(
+        `Seed password for ${user.email} is too weak for production (needs >= ${minPasswordLength} characters).`,
+      );
+    }
     const passwordHash = await bcrypt.hash(user.password, 12);
     await prisma.appUser.upsert({
       where: { email: user.email },

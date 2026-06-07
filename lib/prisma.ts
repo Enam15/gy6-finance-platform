@@ -20,7 +20,13 @@ export type DbClient = Omit<
  * singleton prevents connection-pool exhaustion across Next.js hot reloads
  * in development.
  */
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const adapter = new PrismaPg({
+  connectionString: env.DATABASE_URL,
+  // Cap connections per (serverless) instance. High enough for our
+  // in-request Promise.all fan-out (e.g. the dashboard's parallel
+  // aggregates), low enough to stay friendly to the database's pooler.
+  max: 10,
+});
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
