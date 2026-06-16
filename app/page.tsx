@@ -8,9 +8,17 @@ import {
 import { auth } from "@/auth";
 import { DashboardService } from "@/services/dashboard-service";
 import { formatMoney, money } from "@/lib/money";
-import { MonthlyIncomeExpenseChart } from "@/components/monthly-income-expense-chart";
+import { DashboardCharts } from "@/components/dashboard-charts";
+import {
+  QuarterPicker,
+  YearPicker,
+} from "./_components/dashboard-period-pickers";
 
 export const dynamic = "force-dynamic";
+
+interface DashboardPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
 interface MoneyCardProps {
   label: string;
@@ -49,17 +57,41 @@ function MoneyCard({
   );
 }
 
-function quarterLabel(at: Date): string {
-  const q = Math.floor(at.getUTCMonth() / 3) + 1;
-  return `Q${q} ${at.getUTCFullYear()}`;
+/** Parse a single-valued numeric search param, or undefined. */
+function numParam(v: string | string[] | undefined): number | undefined {
+  if (typeof v !== "string") return undefined;
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? n : undefined;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   const session = await auth();
   const userFirstName = (session?.user?.name ?? "there").split(" ")[0];
 
-  const at = new Date();
-  const kpis = await new DashboardService().getKpis(at);
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const currentQuarter = Math.floor(now.getUTCMonth() / 3) + 1;
+
+  const sp = await searchParams;
+  const q = Math.min(4, Math.max(1, numParam(sp["q"]) ?? currentQuarter));
+  const qYear = numParam(sp["qy"]) ?? currentYear;
+  const yYear = numParam(sp["y"]) ?? currentYear;
+
+  // Year options: current year and the previous four, plus any selected year.
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  for (const yr of [qYear, yYear]) {
+    if (!years.includes(yr)) years.push(yr);
+  }
+  years.sort((a, b) => b - a);
+
+  const service = new DashboardService();
+  const [kpis, quarter, year] = await Promise.all([
+    service.getKpis(now),
+    service.quarterTotals(qYear, q),
+    service.yearTotals(yYear),
+  ]);
 
   const chartPoints = kpis.monthly.map((m) => ({
     monthIso: m.monthStart.toISOString(),
@@ -67,13 +99,15 @@ export default async function DashboardPage() {
     expenseMinor: m.expense.toString(),
   }));
 
+  const yearSuffix = yYear === currentYear ? " year-to-date" : "";
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Welcome back, {userFirstName}. Real-time view of cash, receivables,
-          payables, and the year so far.
+          Welcome back, {userFirstName}. A live view of cash, receivables,
+          payables, and the periods you choose.
         </p>
       </div>
 
@@ -85,52 +119,64 @@ export default async function DashboardPage() {
           <MoneyCard
             label="Cash on hand"
             amount={kpis.cashOnHand}
-            description="Sigma balance across Business accounts"
+            description="Total balance across Business accounts"
           />
           <MoneyCard
             label="Outstanding receivables"
             amount={kpis.outstandingReceivables}
-            description="Sigma amount_due across confirmed income"
+            description="Total still owed to you (confirmed income)"
           />
           <MoneyCard
             label="Outstanding payables"
             amount={kpis.outstandingPayables}
-            description="Sigma amount_due across confirmed expense"
+            description="Total you still owe (confirmed expense)"
           />
         </div>
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          {quarterLabel(at)}
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Q{q} {qYear}
+          </h2>
+          <QuarterPicker quarter={q} year={qYear} years={years} />
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <MoneyCard label="Income" amount={kpis.thisQuarter.income} />
-          <MoneyCard label="Expense" amount={kpis.thisQuarter.expense} />
-          <MoneyCard label="Net" amount={kpis.thisQuarter.net} toneOnSign />
+          <MoneyCard label="Income" amount={quarter.income} />
+          <MoneyCard label="Expense" amount={quarter.expense} />
+          <MoneyCard label="Net" amount={quarter.net} toneOnSign />
         </div>
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          {at.getUTCFullYear()} year-to-date
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {yYear}
+            {yearSuffix}
+          </h2>
+          <YearPicker year={yYear} years={years} />
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
-          <MoneyCard label="Income" amount={kpis.yearToDate.income} />
-          <MoneyCard label="Expense" amount={kpis.yearToDate.expense} />
-          <MoneyCard label="Net" amount={kpis.yearToDate.net} toneOnSign />
+          <MoneyCard label="Income" amount={year.income} />
+          <MoneyCard label="Expense" amount={year.expense} />
+          <MoneyCard label="Net" amount={year.net} toneOnSign />
         </div>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Last 12 months</CardTitle>
+          <CardTitle>Charts</CardTitle>
           <CardDescription>
-            Confirmed income vs expense, bucketed by entry date (UTC).
+            Visualise income, expense, net profit, and your current position.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <MonthlyIncomeExpenseChart points={chartPoints} />
+          <DashboardCharts
+            points={chartPoints}
+            cashMinor={kpis.cashOnHand.toString()}
+            receivablesMinor={kpis.outstandingReceivables.toString()}
+            payablesMinor={kpis.outstandingPayables.toString()}
+          />
         </CardContent>
       </Card>
     </div>

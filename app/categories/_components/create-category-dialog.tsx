@@ -99,7 +99,7 @@ export function CreateCategoryDialog() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="category-kind">Kind</Label>
+              <Label htmlFor="category-kind">Type</Label>
               <Select
                 value={kind}
                 onValueChange={(value) =>

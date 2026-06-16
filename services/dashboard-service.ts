@@ -129,4 +129,27 @@ export class DashboardService {
       monthly,
     };
   }
+
+  /** Income / expense / net for a specific calendar quarter (q = 1..4). */
+  async quarterTotals(year: number, quarter: number): Promise<PeriodTotals> {
+    const q = Math.min(4, Math.max(1, Math.trunc(quarter)));
+    const start = new Date(Date.UTC(year, (q - 1) * 3, 1));
+    const end = new Date(Date.UTC(year, q * 3, 1));
+    const [income, expense] = await Promise.all([
+      new IncomeService(this.db).sumTotalInPeriod(start, end),
+      new ExpenseService(this.db).sumTotalInPeriod(start, end),
+    ]);
+    return { income, expense, net: income - expense };
+  }
+
+  /** Income / expense / net for a full calendar year. */
+  async yearTotals(year: number): Promise<PeriodTotals> {
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year + 1, 0, 1));
+    const [income, expense] = await Promise.all([
+      new IncomeService(this.db).sumTotalInPeriod(start, end),
+      new ExpenseService(this.db).sumTotalInPeriod(start, end),
+    ]);
+    return { income, expense, net: income - expense };
+  }
 }
