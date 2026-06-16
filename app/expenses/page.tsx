@@ -125,7 +125,8 @@ export default async function ExpensesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Description</TableHead>
-                  <TableHead>Payee</TableHead>
+                  <TableHead>Debit (DR)</TableHead>
+                  <TableHead>Credit (CR)</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Due</TableHead>
@@ -142,6 +143,7 @@ export default async function ExpensesPage() {
                     <TableCell className="font-medium">
                       {entry.description}
                     </TableCell>
+                    <TableCell>Expense</TableCell>
                     <TableCell>
                       {accountNameById.get(entry.payeeAccountId) ?? "Unknown"}
                     </TableCell>

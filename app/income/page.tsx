@@ -125,7 +125,8 @@ export default async function IncomePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Description</TableHead>
-                  <TableHead>Account</TableHead>
+                  <TableHead>Debit (DR)</TableHead>
+                  <TableHead>Credit (CR)</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Due</TableHead>
@@ -145,6 +146,7 @@ export default async function IncomePage() {
                     <TableCell>
                       {accountNameById.get(entry.clientAccountId) ?? "Unknown"}
                     </TableCell>
+                    <TableCell>Revenue</TableCell>
                     <TableCell>
                       {categoryNameById.get(entry.categoryId) ?? "Unknown"}
                     </TableCell>

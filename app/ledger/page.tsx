@@ -16,6 +16,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
+import { IncomeService } from "@/services/income-service";
+import { ExpenseService } from "@/services/expense-service";
+import { TransactionCategoryService } from "@/services/transaction-category-service";
 import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
@@ -49,12 +52,28 @@ export default async function LedgerPage() {
   // Account lookup needs ALL accounts (including the hidden system
   // accounts - Revenue, Expense, Adjustments, Opening Balances - which
   // appear in postings but are filtered out of the /accounts list).
-  const [entries, accounts] = await Promise.all([
-    new StatementEntryService().listRecent(100),
-    new AccountService().listAccounts(),
-  ]);
+  const [entries, accounts, incomeEntries, expenseEntries, categories] =
+    await Promise.all([
+      new StatementEntryService().listRecent(100),
+      new AccountService().listAccounts(),
+      new IncomeService().listEntries(),
+      new ExpenseService().listEntries(),
+      new TransactionCategoryService().listAll(),
+    ]);
 
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+  // Map each income/expense entry id -> its category name, so a ledger
+  // posting sourced from one can show which category it belongs to.
+  const categoryBySourceId = new Map<string, string>();
+  for (const e of incomeEntries) {
+    const name = categoryNameById.get(e.categoryId);
+    if (name) categoryBySourceId.set(e.id, name);
+  }
+  for (const e of expenseEntries) {
+    const name = categoryNameById.get(e.categoryId);
+    if (name) categoryBySourceId.set(e.id, name);
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
@@ -90,6 +109,7 @@ export default async function LedgerPage() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Debit (DR)</TableHead>
                   <TableHead>Credit (CR)</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -104,6 +124,9 @@ export default async function LedgerPage() {
                     </TableCell>
                     <TableCell className="font-medium">
                       {entry.description}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {categoryBySourceId.get(entry.sourceId) ?? "—"}
                     </TableCell>
                     <TableCell>
                       {accountNameById.get(entry.debitAccountId) ?? "Unknown"}
