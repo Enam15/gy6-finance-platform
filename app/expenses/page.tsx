@@ -22,7 +22,7 @@ import type { EntryStatus } from "@/lib/entry-status";
 import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateExpenseDialog } from "./_components/create-expense-dialog";
 import { ConfirmExpenseButton } from "./_components/confirm-button";
-import { PayExpenseButton } from "./_components/pay-expense-button";
+import { FullyPaidButton } from "@/components/fully-paid-button";
 import { ReverseButton } from "@/components/reverse-button";
 import { ExportLinks } from "@/components/export-links";
 
@@ -182,12 +182,17 @@ export default async function ExpensesPage() {
                         )}
                         {entry.state === "CONFIRMED" &&
                           entry.amountDue > 0n && (
-                            <PayExpenseButton
+                            <FullyPaidButton
+                              kind="expenses"
                               entryId={entry.id}
                               description={entry.description}
                               amountDueMinor={entry.amountDue.toString()}
                               businessAccounts={businessAccountOptions}
                             />
+                          )}
+                        {entry.state === "CONFIRMED" &&
+                          entry.amountDue === 0n && (
+                            <Badge variant="secondary">Fully paid</Badge>
                           )}
                         {entry.state === "CONFIRMED" &&
                           entry.amountPaid === 0n && (
