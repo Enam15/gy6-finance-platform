@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
   { label: "Distributions", href: "/distributions" },
   { label: "Renewals", href: "/renewals" },
   { label: "Ledger", href: "/ledger" },
+  { label: "Notes", href: "/notes" },
 ];
 
 export interface SidebarUser {

@@ -367,6 +367,24 @@ model BalanceAdjustment {
 }
 
 // ---------------------------------------------------------------------------
+// Shared notes
+// ---------------------------------------------------------------------------
+
+/// A free-form shared note - a scratchpad both partners can read and write,
+/// for reminders and things to keep an eye on. Not financial data, so notes
+/// can be edited and deleted (unlike the immutable ledger).
+model Note {
+  id        String   @id @default(uuid(7))
+  body      String
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("notes")
+}
+
+// ---------------------------------------------------------------------------
 // Recurring renewals
 // ---------------------------------------------------------------------------
 
