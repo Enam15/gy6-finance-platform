@@ -23,6 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { moneyFromMajor } from "@/lib/money";
+import { RecurrencePicker } from "@/components/recurrence-picker";
+import {
+  DEFAULT_RECURRENCE,
+  daysBetweenIso,
+  nextOccurrenceIso,
+  resolveInterval,
+  type RecurrenceState,
+} from "@/lib/recurrence";
 
 export interface AccountOption {
   id: string;
@@ -59,6 +67,8 @@ export function CreateIncomeDialog({
   const [amount, setAmount] = useState("");
   const [entryDate, setEntryDate] = useState(todayIso);
   const [paymentDueOn, setPaymentDueOn] = useState(todayIso);
+  const [recurrence, setRecurrence] =
+    useState<RecurrenceState>(DEFAULT_RECURRENCE);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
@@ -68,6 +78,7 @@ export function CreateIncomeDialog({
     setAmount("");
     setEntryDate(todayIso());
     setPaymentDueOn(todayIso());
+    setRecurrence(DEFAULT_RECURRENCE);
   }
 
   function onOpenChange(next: boolean) {
@@ -119,7 +130,39 @@ export function CreateIncomeDialog({
         toast.error(data.error ?? "Failed to create income draft");
         return;
       }
-      toast.success(`Income draft "${trimmedDescription}" created`);
+
+      const interval = resolveInterval(recurrence);
+      if (interval) {
+        const renewalRes = await fetch("/api/renewals", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "INCOME",
+            name: trimmedDescription.slice(0, 120),
+            accountId: clientAccountId,
+            categoryId,
+            description: trimmedDescription,
+            totalAmount: minor.toString(),
+            paymentTermsDays: daysBetweenIso(entryDate, paymentDueOn),
+            intervalCount: interval.intervalCount,
+            intervalUnit: interval.intervalUnit,
+            firstRunOn: nextOccurrenceIso(entryDate, interval),
+          }),
+        });
+        if (renewalRes.ok) {
+          toast.success(
+            `Income draft "${trimmedDescription}" created and set to repeat`,
+          );
+        } else {
+          const rdata = (await renewalRes.json().catch(() => ({}))) as ApiError;
+          toast.warning(
+            `Income draft created, but the recurrence wasn't set up: ${rdata.error ?? "add it on the Renewals page"}`,
+          );
+        }
+      } else {
+        toast.success(`Income draft "${trimmedDescription}" created`);
+      }
+
       reset();
       setOpen(false);
       router.refresh();
@@ -233,6 +276,13 @@ export function CreateIncomeDialog({
                 />
               </div>
             </div>
+
+            <RecurrencePicker
+              idPrefix="income"
+              value={recurrence}
+              onChange={setRecurrence}
+              disabled={submitting}
+            />
           </div>
 
           <DialogFooter>

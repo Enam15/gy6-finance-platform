@@ -143,6 +143,37 @@ export class RenewalService {
   }
 
   /**
+   * Pause or reactivate a template. Pausing leaves nextRunOn untouched, so
+   * reactivating later resumes (and catches up) from where it left off.
+   */
+  async setActive(
+    id: string,
+    isActive: boolean,
+    options: ActorOptions = {},
+  ): Promise<Result<RenewalTemplate>> {
+    const existing = await new RenewalTemplateRepository(this.db).findById(id);
+    if (!existing) return err(`Renewal template ${id} was not found`);
+    if (existing.isActive === isActive) return ok(existing);
+
+    const updated = await this.db.$transaction(async (tx) => {
+      const u = await new RenewalTemplateRepository(tx).setActive(id, isActive);
+      await new AuditLogRepository(tx).record({
+        action: "UPDATE",
+        entityType: "RenewalTemplate",
+        entityId: id,
+        summary: `Renewal template "${u.name}" ${isActive ? "reactivated" : "paused"}`,
+        before: { isActive: existing.isActive },
+        after: { isActive: u.isActive },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return u;
+    });
+
+    return ok(updated);
+  }
+
+  /**
    * Generate DRAFT entries for every template due on or before `asOf`.
    * Each template is processed in its own transaction (a failure on one
    * doesn't undo another). Returns a summary of what was created.

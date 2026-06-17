@@ -62,6 +62,14 @@ export class RenewalTemplateRepository {
     });
   }
 
+  /** Pause or reactivate a template. */
+  setActive(id: string, isActive: boolean): Promise<RenewalTemplate> {
+    return this.db.renewalTemplate.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
   /** Advance nextRunOn and stamp lastGeneratedAt after a generation run. */
   markGenerated(
     id: string,

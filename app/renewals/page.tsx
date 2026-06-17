@@ -21,6 +21,7 @@ import { formatMoney, money } from "@/lib/money";
 import type { CategoryKind } from "@/lib/generated/prisma/client";
 import { CreateRenewalDialog } from "./_components/create-renewal-dialog";
 import { GenerateRenewalsButton } from "./_components/generate-renewals-button";
+import { RenewalActiveToggle } from "./_components/renewal-active-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +114,7 @@ export default async function RenewalsPage() {
                   <TableHead>Recurrence</TableHead>
                   <TableHead>Next due</TableHead>
                   <TableHead>End</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Active</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,9 +143,11 @@ export default async function RenewalsPage() {
                       {t.endOn ? formatDate(t.endOn) : "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={t.isActive ? "default" : "outline"}>
-                        {t.isActive ? "Active" : "Paused"}
-                      </Badge>
+                      <RenewalActiveToggle
+                        id={t.id}
+                        isActive={t.isActive}
+                        name={t.name}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
