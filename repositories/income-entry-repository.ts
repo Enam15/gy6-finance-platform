@@ -1,5 +1,6 @@
 import type {
   EntryState,
+  FeeMethod,
   IncomeEntry,
 } from "@/lib/generated/prisma/client";
 import type { DbClient } from "@/lib/prisma";
@@ -14,6 +15,11 @@ export interface CreateIncomeEntryData {
   createdBy?: string | null;
   /** Set when this entry was generated from a renewal template. */
   renewalTemplateId?: string | null;
+  /** Optional transaction fee, realised as a real cost at settlement. */
+  feeMethod?: FeeMethod | null;
+  feeLabel?: string | null;
+  feeBps?: number | null;
+  feeAmount?: bigint | null;
 }
 
 /**
@@ -51,6 +57,10 @@ export class IncomeEntryRepository {
         paymentDueOn: data.paymentDueOn,
         createdBy: data.createdBy ?? null,
         renewalTemplateId: data.renewalTemplateId ?? null,
+        feeMethod: data.feeMethod ?? null,
+        feeLabel: data.feeLabel ?? null,
+        feeBps: data.feeBps ?? null,
+        feeAmount: data.feeAmount ?? null,
       },
     });
   }

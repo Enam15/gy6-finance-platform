@@ -98,4 +98,34 @@ export class AccountRepository {
       },
     });
   }
+
+  /**
+   * The Transaction Fees system account (DEBIT-normal, like Expense), created
+   * on first use so it exists in every environment without a manual seed.
+   * Call inside the posting transaction so creation rolls back with it.
+   */
+  async findOrCreateTransactionFeesAccount(): Promise<Account> {
+    const existing = await this.db.account.findUnique({
+      where: { systemKey: "TRANSACTION_FEES" },
+    });
+    if (existing) return existing;
+
+    const systemCategory = await this.db.accountCategory.findUnique({
+      where: { key: "SYSTEM" },
+    });
+    if (!systemCategory) {
+      throw new Error("SYSTEM account category is missing - re-run the seed");
+    }
+    return this.db.account.create({
+      data: {
+        categoryId: systemCategory.id,
+        name: "Transaction Fees",
+        description:
+          "Counter-account for bank / Upwork / online-wallet fees recorded as a real cost.",
+        systemKey: "TRANSACTION_FEES",
+        normalBalance: "DEBIT",
+        allowNegative: false,
+      },
+    });
+  }
 }

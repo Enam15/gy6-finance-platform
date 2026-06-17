@@ -4,6 +4,7 @@ import type {
   PrismaClient,
 } from "@/lib/generated/prisma/client";
 import { computeEntryStatus, type EntryStatus } from "@/lib/entry-status";
+import { computeFeeMinor } from "@/lib/fees";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
 import { AccountRepository } from "@/repositories/account-repository";
@@ -19,9 +20,31 @@ const createSchema = z.object({
   totalAmount: z.coerce.bigint().refine((v) => v > 0n, "Total must be positive"),
   entryDate: z.coerce.date(),
   paymentDueOn: z.coerce.date(),
+  feeMethod: z.enum(["BANK", "UPWORK", "ONLINE_WALLET"]).nullish(),
+  feeLabel: z.string().trim().max(120).nullish(),
+  feeBps: z.coerce.number().int().min(0).max(10000).nullish(),
 });
 
 export type CreateIncomeInput = z.infer<typeof createSchema>;
+
+/** Normalise the optional fee inputs into the columns stored on an entry. */
+function resolveFee(
+  totalAmount: bigint,
+  feeMethod: "BANK" | "UPWORK" | "ONLINE_WALLET" | null | undefined,
+  feeLabel: string | null | undefined,
+  feeBps: number | null | undefined,
+) {
+  const bps = feeBps ?? 0;
+  if (!feeMethod || bps <= 0) {
+    return { feeMethod: null, feeLabel: null, feeBps: null, feeAmount: null };
+  }
+  return {
+    feeMethod,
+    feeLabel: feeLabel && feeLabel.length > 0 ? feeLabel : null,
+    feeBps: bps,
+    feeAmount: computeFeeMinor(totalAmount, bps),
+  };
+}
 
 export interface IncomeEntryWithStatus extends IncomeEntry {
   status: EntryStatus;
@@ -108,6 +131,13 @@ export class IncomeService {
       return err("Category must be of kind INCOME");
     }
 
+    const fee = resolveFee(
+      data.totalAmount,
+      data.feeMethod,
+      data.feeLabel,
+      data.feeBps,
+    );
+
     const entry = await this.db.$transaction(async (tx) => {
       const created = await new IncomeEntryRepository(tx).create({
         clientAccountId: data.clientAccountId,
@@ -116,6 +146,10 @@ export class IncomeService {
         totalAmount: data.totalAmount,
         entryDate: data.entryDate,
         paymentDueOn: data.paymentDueOn,
+        feeMethod: fee.feeMethod,
+        feeLabel: fee.feeLabel,
+        feeBps: fee.feeBps,
+        feeAmount: fee.feeAmount,
       });
       await new AuditLogRepository(tx).record({
         action: "CREATE",

@@ -35,6 +35,7 @@ enum SystemAccountKey {
   EXPENSE
   ADJUSTMENTS
   OPENING_BALANCES
+  TRANSACTION_FEES
 }
 
 /// Which side of an account a debit posting falls on. A debit increases a
@@ -64,6 +65,14 @@ enum RecurrenceUnit {
   WEEK
   MONTH
   YEAR
+}
+
+/// How a transaction fee was charged. The free-text label on the entry
+/// captures the specific bank, online wallet, or Upwork account name.
+enum FeeMethod {
+  BANK
+  UPWORK
+  ONLINE_WALLET
 }
 
 /// The nature of a ledger posting.
@@ -254,6 +263,10 @@ model IncomeEntry {
   updatedAt         DateTime   @updatedAt @map("updated_at")
   createdBy         String?    @map("created_by")
   renewalTemplateId String?    @map("renewal_template_id")
+  feeMethod         FeeMethod? @map("fee_method")
+  feeLabel          String?    @map("fee_label")
+  feeBps            Int?       @map("fee_bps")
+  feeAmount         BigInt?    @map("fee_amount")
 
   clientAccount   Account             @relation(fields: [clientAccountId], references: [id])
   category        TransactionCategory @relation(fields: [categoryId], references: [id])
@@ -286,6 +299,10 @@ model ExpenseEntry {
   updatedAt         DateTime   @updatedAt @map("updated_at")
   createdBy         String?    @map("created_by")
   renewalTemplateId String?    @map("renewal_template_id")
+  feeMethod         FeeMethod? @map("fee_method")
+  feeLabel          String?    @map("fee_label")
+  feeBps            Int?       @map("fee_bps")
+  feeAmount         BigInt?    @map("fee_amount")
 
   payeeAccount    Account             @relation(fields: [payeeAccountId], references: [id])
   category        TransactionCategory @relation(fields: [categoryId], references: [id])
@@ -331,6 +348,10 @@ model Transfer {
   toAccountId   String     @map("to_account_id")
   amount        BigInt
   description   String?
+  feeMethod     FeeMethod? @map("fee_method")
+  feeLabel      String?    @map("fee_label")
+  feeBps        Int?       @map("fee_bps")
+  feeAmount     BigInt?    @map("fee_amount")
   effectiveDate DateTime   @db.Date @map("effective_date")
   state         EntryState @default(DRAFT)
   confirmedAt   DateTime?  @map("confirmed_at")

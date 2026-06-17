@@ -31,6 +31,8 @@ import {
   resolveInterval,
   type RecurrenceState,
 } from "@/lib/recurrence";
+import { FeePicker } from "@/components/fee-picker";
+import { DEFAULT_FEE, percentToBps, type FeeState } from "@/lib/fees";
 
 export interface AccountOption {
   id: string;
@@ -54,6 +56,18 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Parse the amount field to positive minor units, or null if not yet valid. */
+function parseAmountMinor(value: string): bigint | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const m = moneyFromMajor(trimmed);
+    return m > 0n ? m : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CreateIncomeDialog({
   accounts,
   categories,
@@ -69,6 +83,7 @@ export function CreateIncomeDialog({
   const [paymentDueOn, setPaymentDueOn] = useState(todayIso);
   const [recurrence, setRecurrence] =
     useState<RecurrenceState>(DEFAULT_RECURRENCE);
+  const [fee, setFee] = useState<FeeState>(DEFAULT_FEE);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
@@ -79,6 +94,7 @@ export function CreateIncomeDialog({
     setEntryDate(todayIso());
     setPaymentDueOn(todayIso());
     setRecurrence(DEFAULT_RECURRENCE);
+    setFee(DEFAULT_FEE);
   }
 
   function onOpenChange(next: boolean) {
@@ -111,6 +127,19 @@ export function CreateIncomeDialog({
       return;
     }
 
+    let feeBps: number | null = null;
+    if (fee.enabled) {
+      feeBps = percentToBps(fee.percent);
+      if (feeBps === null) {
+        toast.error("Enter a valid fee percentage between 0 and 100");
+        return;
+      }
+    }
+    const feeFields =
+      feeBps !== null
+        ? { feeMethod: fee.method, feeLabel: fee.label.trim() || undefined, feeBps }
+        : {};
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/income", {
@@ -123,6 +152,7 @@ export function CreateIncomeDialog({
           totalAmount: minor.toString(),
           entryDate,
           paymentDueOn,
+          ...feeFields,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
@@ -281,6 +311,15 @@ export function CreateIncomeDialog({
               idPrefix="income"
               value={recurrence}
               onChange={setRecurrence}
+              disabled={submitting}
+            />
+
+            <FeePicker
+              idPrefix="income"
+              value={fee}
+              onChange={setFee}
+              totalMinor={parseAmountMinor(amount)}
+              direction="in"
               disabled={submitting}
             />
           </div>

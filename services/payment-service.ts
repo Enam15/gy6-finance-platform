@@ -5,11 +5,28 @@ import type {
 } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
+import { feeMethodLabel } from "@/lib/fees";
+import { AccountRepository } from "@/repositories/account-repository";
 import { AuditLogRepository } from "@/repositories/audit-log-repository";
 import { ExpenseEntryRepository } from "@/repositories/expense-entry-repository";
 import { IncomeEntryRepository } from "@/repositories/income-entry-repository";
 import { PaymentRepository } from "@/repositories/payment-repository";
-import { PostingFailure, PostingService } from "@/services/posting-service";
+import {
+  PostingFailure,
+  PostingService,
+  type PostingLine,
+} from "@/services/posting-service";
+
+/** Human description for the fee posting line. */
+function feeLineDescription(
+  method: string | null,
+  label: string | null,
+  entryDescription: string,
+): string {
+  const channel = method ? feeMethodLabel(method) : "fee";
+  const named = label ? `${channel} - ${label}` : channel;
+  return `Transaction fee (${named}) on: ${entryDescription}`;
+}
 
 const recordIncomePaymentSchema = z.object({
   incomeEntryId: z.string().min(1, "incomeEntryId is required"),
@@ -100,19 +117,46 @@ export class PaymentService {
           paidOn: data.paidOn,
           description: data.description ?? null,
         });
+        // A fee, if any, is realised when the payment settles the entry:
+        // the client pays the gross, the business nets gross − fee, and the
+        // fee is recorded as a real cost against Transaction Fees.
+        const settles = data.amount === entry.amountDue;
+        let feeApplied = 0n;
+        if (settles && entry.feeAmount && entry.feeAmount > 0n) {
+          feeApplied =
+            entry.feeAmount > data.amount ? data.amount : entry.feeAmount;
+        }
+        const incomePostings: PostingLine[] = [];
+        const netToBusiness = data.amount - feeApplied;
+        if (netToBusiness > 0n) {
+          incomePostings.push({
+            debitAccountId: data.businessAccountId,
+            creditAccountId: entry.clientAccountId,
+            amount: netToBusiness,
+          });
+        }
+        if (feeApplied > 0n) {
+          const feeAccount = await new AccountRepository(
+            tx,
+          ).findOrCreateTransactionFeesAccount();
+          incomePostings.push({
+            debitAccountId: feeAccount.id,
+            creditAccountId: entry.clientAccountId,
+            amount: feeApplied,
+            description: feeLineDescription(
+              entry.feeMethod,
+              entry.feeLabel,
+              entry.description,
+            ),
+          });
+        }
         await new PostingService().post(tx, {
           entryType: "PAYMENT",
           sourceType: "PAYMENT",
           sourceId: created.id,
           effectiveDate: data.paidOn,
           description: `Payment received for: ${entry.description}`,
-          postings: [
-            {
-              debitAccountId: data.businessAccountId,
-              creditAccountId: entry.clientAccountId,
-              amount: data.amount,
-            },
-          ],
+          postings: incomePostings,
           actorId: options.actorId ?? null,
           actorLabel: options.actorLabel ?? null,
         });
@@ -193,19 +237,43 @@ export class PaymentService {
           paidOn: data.paidOn,
           description: data.description ?? null,
         });
+        // A fee, if any, is realised when the payment settles the entry: the
+        // payee is paid the gross, the fee adds to cash out, and the fee is
+        // recorded as a real cost against Transaction Fees.
+        const settles = data.amount === entry.amountDue;
+        const feeApplied =
+          settles && entry.feeAmount && entry.feeAmount > 0n
+            ? entry.feeAmount
+            : 0n;
+        const expensePostings: PostingLine[] = [
+          {
+            debitAccountId: entry.payeeAccountId,
+            creditAccountId: data.businessAccountId,
+            amount: data.amount,
+          },
+        ];
+        if (feeApplied > 0n) {
+          const feeAccount = await new AccountRepository(
+            tx,
+          ).findOrCreateTransactionFeesAccount();
+          expensePostings.push({
+            debitAccountId: feeAccount.id,
+            creditAccountId: data.businessAccountId,
+            amount: feeApplied,
+            description: feeLineDescription(
+              entry.feeMethod,
+              entry.feeLabel,
+              entry.description,
+            ),
+          });
+        }
         await new PostingService().post(tx, {
           entryType: "PAYMENT",
           sourceType: "PAYMENT",
           sourceId: created.id,
           effectiveDate: data.paidOn,
           description: `Payment made for: ${entry.description}`,
-          postings: [
-            {
-              debitAccountId: entry.payeeAccountId,
-              creditAccountId: data.businessAccountId,
-              amount: data.amount,
-            },
-          ],
+          postings: expensePostings,
           actorId: options.actorId ?? null,
           actorLabel: options.actorLabel ?? null,
         });

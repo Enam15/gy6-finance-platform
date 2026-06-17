@@ -18,6 +18,7 @@ import { AccountService } from "@/services/account-service";
 import { IncomeService } from "@/services/income-service";
 import { TransactionCategoryService } from "@/services/transaction-category-service";
 import { formatMoney, money } from "@/lib/money";
+import { feeMethodLabel, bpsToPercent } from "@/lib/fees";
 import type { EntryStatus } from "@/lib/entry-status";
 import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateIncomeDialog } from "./_components/create-income-dialog";
@@ -129,6 +130,7 @@ export default async function IncomePage() {
                   <TableHead>Credit (CR)</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
                   <TableHead className="text-right">Due</TableHead>
                   <TableHead>Entry</TableHead>
                   <TableHead>Payment due</TableHead>
@@ -152,6 +154,21 @@ export default async function IncomePage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(money(entry.totalAmount))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {entry.feeAmount && entry.feeAmount > 0n ? (
+                        <div className="leading-tight">
+                          <div>{formatMoney(money(entry.feeAmount))}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {feeMethodLabel(entry.feeMethod ?? "")}
+                            {entry.feeBps
+                              ? ` ${bpsToPercent(entry.feeBps)}%`
+                              : ""}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(money(entry.amountDue))}

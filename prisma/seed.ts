@@ -84,6 +84,14 @@ const systemAccounts: SystemAccountSeed[] = [
     normalBalance: "CREDIT",
     allowNegative: true,
   },
+  {
+    systemKey: "TRANSACTION_FEES",
+    name: "Transaction Fees",
+    description:
+      "Counter-account for bank / Upwork / online-wallet fees recorded as a real cost.",
+    normalBalance: "DEBIT",
+    allowNegative: false,
+  },
 ];
 
 async function seed(): Promise<void> {
