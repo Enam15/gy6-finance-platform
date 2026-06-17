@@ -21,6 +21,7 @@ import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
+import { AdjustBalanceButton } from "./_components/adjust-balance-button";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,14 @@ export default async function AccountDetailPage({ params }: PageProps) {
             {account.description ? ` - ${account.description}` : ""}
           </p>
         </div>
-        <ExportLinks basePath={`/api/accounts/${id}/export`} />
+        <div className="flex flex-col items-end gap-2">
+          <AdjustBalanceButton
+            accountId={id}
+            accountName={account.name}
+            currentBalanceMinor={account.balance.toString()}
+          />
+          <ExportLinks basePath={`/api/accounts/${id}/export`} />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

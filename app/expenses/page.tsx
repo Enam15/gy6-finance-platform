@@ -26,6 +26,7 @@ import { ConfirmExpenseButton } from "./_components/confirm-button";
 import { FullyPaidButton } from "@/components/fully-paid-button";
 import { ReverseButton } from "@/components/reverse-button";
 import { ExportLinks } from "@/components/export-links";
+import { ListSelectFilter } from "@/app/_components/list-select-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,11 @@ function statusBadgeVariant(status: EntryStatus): BadgeVariant {
   }
 }
 
-export default async function ExpensesPage() {
+export default async function ExpensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const expenseService = new ExpenseService();
   const accountService = new AccountService();
   const categoryService = new TransactionCategoryService();
@@ -69,6 +74,12 @@ export default async function ExpensesPage() {
       categoryService.listByKind("EXPENSE"),
       accountService.listBusinessAccounts(),
     ]);
+
+  const sp = await searchParams;
+  const categoryFilter = typeof sp.category === "string" ? sp.category : "";
+  const visibleEntries = categoryFilter
+    ? entries.filter((e) => e.categoryId === categoryFilter)
+    : entries;
 
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
   const categoryNameById = new Map(
@@ -113,13 +124,33 @@ export default async function ExpensesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All expense entries ({entries.length})</CardTitle>
-          <CardDescription>Newest first.</CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>
+                All expense entries ({visibleEntries.length})
+              </CardTitle>
+              <CardDescription>Newest first.</CardDescription>
+            </div>
+            {expenseCategories.length > 0 && (
+              <ListSelectFilter
+                paramKey="category"
+                label="Category"
+                value={categoryFilter}
+                options={expenseCategories.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                }))}
+                allLabel="All categories"
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {entries.length === 0 ? (
+          {visibleEntries.length === 0 ? (
             <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
-              No expenses recorded yet.
+              {categoryFilter
+                ? "No expenses in this category."
+                : "No expenses recorded yet."}
             </div>
           ) : (
             <Table>
@@ -140,7 +171,7 @@ export default async function ExpensesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
                       {entry.description}

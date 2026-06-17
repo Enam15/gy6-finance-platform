@@ -22,6 +22,7 @@ import { TransactionCategoryService } from "@/services/transaction-category-serv
 import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
+import { ListSelectFilter } from "@/app/_components/list-select-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,16 @@ function entryTypeBadgeVariant(type: StatementEntryType): BadgeVariant {
   }
 }
 
-export default async function LedgerPage() {
+function entryTypeLabel(type: string): string {
+  const lower = type.toLowerCase().replace(/_/g, " ");
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+export default async function LedgerPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // Account lookup needs ALL accounts (including the hidden system
   // accounts - Revenue, Expense, Adjustments, Opening Balances - which
   // appear in postings but are filtered out of the /accounts list).
@@ -75,6 +85,27 @@ export default async function LedgerPage() {
     if (name) categoryBySourceId.set(e.id, name);
   }
 
+  const sp = await searchParams;
+  const typeFilter = typeof sp.type === "string" ? sp.type : "";
+  const categoryFilter = typeof sp.category === "string" ? sp.category : "";
+  const visibleEntries = entries.filter((e) => {
+    if (typeFilter && e.entryType !== typeFilter) return false;
+    if (
+      categoryFilter &&
+      (categoryBySourceId.get(e.sourceId) ?? "") !== categoryFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const typeOptions = Array.from(new Set(entries.map((e) => e.entryType))).map(
+    (t) => ({ value: t, label: entryTypeLabel(t) }),
+  );
+  const categoryOptions = Array.from(new Set([...categoryBySourceId.values()]))
+    .sort()
+    .map((n) => ({ value: n, label: n }));
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
       <div className="flex items-start justify-between gap-4">
@@ -91,17 +122,43 @@ export default async function LedgerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent entries ({entries.length})</CardTitle>
-          <CardDescription>
-            Showing the 100 most recent postings, newest first by effective
-            date.
-          </CardDescription>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <CardTitle>Recent entries ({visibleEntries.length})</CardTitle>
+              <CardDescription>
+                Showing the 100 most recent postings, newest first by effective
+                date.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ListSelectFilter
+                paramKey="type"
+                label="Type"
+                value={typeFilter}
+                options={typeOptions}
+                allLabel="All types"
+              />
+              {categoryOptions.length > 0 && (
+                <ListSelectFilter
+                  paramKey="category"
+                  label="Category"
+                  value={categoryFilter}
+                  options={categoryOptions}
+                  allLabel="All categories"
+                />
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {entries.length === 0 ? (
             <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
               No ledger entries yet. Confirm an income or expense, run a
               transfer, or post a balance adjustment to populate the ledger.
+            </div>
+          ) : visibleEntries.length === 0 ? (
+            <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
+              No entries match these filters.
             </div>
           ) : (
             <Table>
@@ -117,7 +174,7 @@ export default async function LedgerPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="tabular-nums">
                       {formatDate(entry.effectiveDate)}
