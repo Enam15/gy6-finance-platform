@@ -60,3 +60,14 @@ export function computeFeeMinor(totalMinor: bigint, bps: number): bigint {
   const cut = (totalMinor * b + 5000n) / 10000n;
   return cut > totalMinor ? totalMinor : cut;
 }
+
+/** Human description for the fee posting line on the ledger. */
+export function feeLineDescription(
+  method: string | null,
+  label: string | null,
+  context: string,
+): string {
+  const channel = method ? feeMethodLabel(method) : "fee";
+  const named = label ? `${channel} - ${label}` : channel;
+  return `Transaction fee (${named}) on: ${context}`;
+}

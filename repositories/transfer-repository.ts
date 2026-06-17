@@ -1,4 +1,4 @@
-import type { Transfer } from "@/lib/generated/prisma/client";
+import type { FeeMethod, Transfer } from "@/lib/generated/prisma/client";
 import type { DbClient } from "@/lib/prisma";
 
 export interface CreateTransferData {
@@ -8,6 +8,11 @@ export interface CreateTransferData {
   description?: string | null;
   effectiveDate: Date;
   createdBy?: string | null;
+  /** Optional transaction fee, posted as a real cost alongside the move. */
+  feeMethod?: FeeMethod | null;
+  feeLabel?: string | null;
+  feeBps?: number | null;
+  feeAmount?: bigint | null;
 }
 
 /**
@@ -37,6 +42,10 @@ export class TransferRepository {
         state: "CONFIRMED",
         confirmedAt: new Date(),
         createdBy: data.createdBy ?? null,
+        feeMethod: data.feeMethod ?? null,
+        feeLabel: data.feeLabel ?? null,
+        feeBps: data.feeBps ?? null,
+        feeAmount: data.feeAmount ?? null,
       },
     });
   }

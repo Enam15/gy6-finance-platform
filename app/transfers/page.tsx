@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { TransferService } from "@/services/transfer-service";
 import { formatMoney, money } from "@/lib/money";
+import { feeMethodLabel, bpsToPercent } from "@/lib/fees";
 import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateTransferDialog } from "./_components/create-transfer-dialog";
 import { ReverseButton } from "@/components/reverse-button";
@@ -97,6 +98,7 @@ export default async function TransfersPage() {
                   <TableHead>From</TableHead>
                   <TableHead>To</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>State</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -116,6 +118,21 @@ export default async function TransfersPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(money(transfer.amount))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {transfer.feeAmount && transfer.feeAmount > 0n ? (
+                        <div className="leading-tight">
+                          <div>{formatMoney(money(transfer.feeAmount))}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {feeMethodLabel(transfer.feeMethod ?? "")}
+                            {transfer.feeBps
+                              ? ` ${bpsToPercent(transfer.feeBps)}%`
+                              : ""}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {transfer.description ?? ""}

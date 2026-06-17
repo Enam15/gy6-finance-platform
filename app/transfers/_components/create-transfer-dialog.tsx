@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { moneyFromMajor } from "@/lib/money";
+import { FeePicker } from "@/components/fee-picker";
+import { DEFAULT_FEE, percentToBps, type FeeState } from "@/lib/fees";
 
 export interface BusinessAccountOption {
   id: string;
@@ -41,6 +43,18 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Parse the amount field to positive minor units, or null if not yet valid. */
+function parseAmountMinor(value: string): bigint | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const m = moneyFromMajor(trimmed);
+    return m > 0n ? m : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CreateTransferDialog({
   businessAccounts,
 }: CreateTransferDialogProps) {
@@ -52,6 +66,7 @@ export function CreateTransferDialog({
   const [amount, setAmount] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(todayIso);
   const [description, setDescription] = useState("");
+  const [fee, setFee] = useState<FeeState>(DEFAULT_FEE);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
@@ -60,6 +75,7 @@ export function CreateTransferDialog({
     setAmount("");
     setEffectiveDate(todayIso());
     setDescription("");
+    setFee(DEFAULT_FEE);
   }
 
   function onOpenChange(next: boolean) {
@@ -88,6 +104,19 @@ export function CreateTransferDialog({
       return;
     }
 
+    let feeBps: number | null = null;
+    if (fee.enabled) {
+      feeBps = percentToBps(fee.percent);
+      if (feeBps === null) {
+        toast.error("Enter a valid fee percentage between 0 and 100");
+        return;
+      }
+    }
+    const feeFields =
+      feeBps !== null
+        ? { feeMethod: fee.method, feeLabel: fee.label.trim() || undefined, feeBps }
+        : {};
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/transfers", {
@@ -99,6 +128,7 @@ export function CreateTransferDialog({
           amount: minor.toString(),
           effectiveDate,
           description: description.trim() ? description.trim() : undefined,
+          ...feeFields,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
@@ -212,6 +242,15 @@ export function CreateTransferDialog({
                 placeholder="e.g. Sweep to operating account"
               />
             </div>
+
+            <FeePicker
+              idPrefix="transfer"
+              value={fee}
+              onChange={setFee}
+              totalMinor={parseAmountMinor(amount)}
+              direction="in"
+              disabled={submitting}
+            />
           </div>
 
           <DialogFooter>

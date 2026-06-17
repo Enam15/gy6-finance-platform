@@ -5,9 +5,15 @@ import type {
 } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
+import { computeFeeMinor, feeLineDescription } from "@/lib/fees";
+import { AccountRepository } from "@/repositories/account-repository";
 import { AuditLogRepository } from "@/repositories/audit-log-repository";
 import { TransferRepository } from "@/repositories/transfer-repository";
-import { PostingFailure, PostingService } from "@/services/posting-service";
+import {
+  PostingFailure,
+  PostingService,
+  type PostingLine,
+} from "@/services/posting-service";
 
 const createTransferSchema = z.object({
   fromAccountId: z.string().min(1, "fromAccountId is required"),
@@ -15,9 +21,31 @@ const createTransferSchema = z.object({
   amount: z.coerce.bigint().refine((v) => v > 0n, "Amount must be positive"),
   effectiveDate: z.coerce.date(),
   description: z.string().trim().max(500).optional(),
+  feeMethod: z.enum(["BANK", "UPWORK", "ONLINE_WALLET"]).nullish(),
+  feeLabel: z.string().trim().max(120).nullish(),
+  feeBps: z.coerce.number().int().min(0).max(10000).nullish(),
 });
 
 export type CreateTransferInput = z.infer<typeof createTransferSchema>;
+
+/** Normalise the optional fee inputs into the columns stored on a transfer. */
+function resolveFee(
+  totalAmount: bigint,
+  feeMethod: "BANK" | "UPWORK" | "ONLINE_WALLET" | null | undefined,
+  feeLabel: string | null | undefined,
+  feeBps: number | null | undefined,
+) {
+  const bps = feeBps ?? 0;
+  if (!feeMethod || bps <= 0) {
+    return { feeMethod: null, feeLabel: null, feeBps: null, feeAmount: null };
+  }
+  return {
+    feeMethod,
+    feeLabel: feeLabel && feeLabel.length > 0 ? feeLabel : null,
+    feeBps: bps,
+    feeAmount: computeFeeMinor(totalAmount, bps),
+  };
+}
 
 interface ActorOptions {
   actorId?: string | null;
@@ -79,6 +107,15 @@ export class TransferService {
     }
 
     try {
+      const fee = resolveFee(
+        data.amount,
+        data.feeMethod,
+        data.feeLabel,
+        data.feeBps,
+      );
+      const transferDescription =
+        data.description ?? `Transfer from "${from.name}" to "${to.name}"`;
+
       const transfer = await this.db.$transaction(async (tx) => {
         const created = await new TransferRepository(tx).create({
           fromAccountId: data.fromAccountId,
@@ -86,21 +123,46 @@ export class TransferService {
           amount: data.amount,
           description: data.description ?? null,
           effectiveDate: data.effectiveDate,
+          feeMethod: fee.feeMethod,
+          feeLabel: fee.feeLabel,
+          feeBps: fee.feeBps,
+          feeAmount: fee.feeAmount,
         });
+
+        // With a fee, the destination receives amount − fee; the source loses
+        // the full amount and the fee is recorded as a real cost.
+        const feeApplied = fee.feeAmount ?? 0n;
+        const transferPostings: PostingLine[] = [];
+        const netToDest = data.amount - feeApplied;
+        if (netToDest > 0n) {
+          transferPostings.push({
+            debitAccountId: data.toAccountId,
+            creditAccountId: data.fromAccountId,
+            amount: netToDest,
+          });
+        }
+        if (feeApplied > 0n) {
+          const feeAccount = await new AccountRepository(
+            tx,
+          ).findOrCreateTransactionFeesAccount();
+          transferPostings.push({
+            debitAccountId: feeAccount.id,
+            creditAccountId: data.fromAccountId,
+            amount: feeApplied,
+            description: feeLineDescription(
+              fee.feeMethod,
+              fee.feeLabel,
+              transferDescription,
+            ),
+          });
+        }
         await new PostingService().post(tx, {
           entryType: "TRANSFER",
           sourceType: "TRANSFER",
           sourceId: created.id,
           effectiveDate: data.effectiveDate,
-          description:
-            data.description ?? `Transfer from "${from.name}" to "${to.name}"`,
-          postings: [
-            {
-              debitAccountId: data.toAccountId,
-              creditAccountId: data.fromAccountId,
-              amount: data.amount,
-            },
-          ],
+          description: transferDescription,
+          postings: transferPostings,
           actorId: options.actorId ?? null,
           actorLabel: options.actorLabel ?? null,
         });

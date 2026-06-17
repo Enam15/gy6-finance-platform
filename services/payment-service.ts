@@ -5,7 +5,7 @@ import type {
 } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
-import { feeMethodLabel } from "@/lib/fees";
+import { feeLineDescription } from "@/lib/fees";
 import { AccountRepository } from "@/repositories/account-repository";
 import { AuditLogRepository } from "@/repositories/audit-log-repository";
 import { ExpenseEntryRepository } from "@/repositories/expense-entry-repository";
@@ -16,17 +16,6 @@ import {
   PostingService,
   type PostingLine,
 } from "@/services/posting-service";
-
-/** Human description for the fee posting line. */
-function feeLineDescription(
-  method: string | null,
-  label: string | null,
-  entryDescription: string,
-): string {
-  const channel = method ? feeMethodLabel(method) : "fee";
-  const named = label ? `${channel} - ${label}` : channel;
-  return `Transaction fee (${named}) on: ${entryDescription}`;
-}
 
 const recordIncomePaymentSchema = z.object({
   incomeEntryId: z.string().min(1, "incomeEntryId is required"),
