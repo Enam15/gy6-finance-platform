@@ -128,7 +128,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const sym = symbol(data.currency);
   const total = data.items.reduce((sum, it) => sum + safeBig(it.amount), 0n);
   const logoUrl = data.logoUrl ?? "/invoice/logo-halftone.svg";
-  const signatureUrl = data.signatureUrl ?? "/invoice/signature.svg";
+  const signatureUrl = data.signatureUrl ?? "/invoice/signature.png";
 
   return (
     <div
@@ -338,6 +338,9 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
           width: 131,
           height: 54,
           objectFit: "contain",
+          // Lets a white-background signature blend onto the cream paper
+          // (white -> transparent, black strokes stay black).
+          mixBlendMode: "multiply",
         }}
       />
       <div
