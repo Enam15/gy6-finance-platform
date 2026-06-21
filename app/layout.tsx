@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { Geist } from "next/font/google";
+import { Geist, Source_Serif_4 } from "next/font/google";
 import { auth } from "@/auth";
 import { AppSidebar, type SidebarUser } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+// Body typeface for the invoice document.
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-invoice-serif",
+});
 
 export const metadata: Metadata = {
   title: "GY6 Finance Management System",
@@ -31,7 +37,10 @@ export default async function RootLayout({
     : null;
 
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
+    <html
+      lang="en"
+      className={cn("font-sans", geist.variable, sourceSerif.variable)}
+    >
       <body className="bg-background text-foreground antialiased">
         <div className="flex min-h-screen">
           <AppSidebar user={sidebarUser} />

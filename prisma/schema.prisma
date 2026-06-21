@@ -406,6 +406,87 @@ model Note {
 }
 
 // ---------------------------------------------------------------------------
+// Invoices
+// ---------------------------------------------------------------------------
+
+/// Lifecycle of a client-facing invoice document.
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+}
+
+/// A client-facing invoice rendered to GY6's fixed design. `number` is the
+/// sequence shown top-left - it defaults to the next number but stays editable
+/// because a single engagement can be billed across several payments (e.g. a
+/// 50% advance then a 50% balance). Every issuer / bill-to / payment field is
+/// stored so an invoice is fully editable and reproducible. Money is BigInt
+/// minor units; currency defaults to BDT.
+model Invoice {
+  id           String        @id @default(uuid(7))
+  number       Int
+  status       InvoiceStatus @default(DRAFT)
+  issuanceDate DateTime      @db.Date @map("issuance_date")
+  dueInDays    Int           @default(7) @map("due_in_days")
+  currency     String        @default("BDT")
+
+  issuerEmail   String? @map("issuer_email")
+  issuerAddress String? @map("issuer_address")
+  issuerPhone   String? @map("issuer_phone")
+
+  billToName    String  @map("bill_to_name")
+  billToAddress String? @map("bill_to_address")
+  billToEmail   String? @map("bill_to_email")
+  billToPhone   String? @map("bill_to_phone")
+  billToTin     String? @map("bill_to_tin")
+
+  payBank          String? @map("pay_bank")
+  payAccountName   String? @map("pay_account_name")
+  payAccountType   String? @map("pay_account_type")
+  payAccountNumber String? @map("pay_account_number")
+  payBranch        String? @map("pay_branch")
+  payRouting       String? @map("pay_routing")
+
+  signatoryName  String? @map("signatory_name")
+  signatoryTitle String? @map("signatory_title")
+  signatoryPhone String? @map("signatory_phone")
+  signatoryEmail String? @map("signatory_email")
+
+  notes String?
+
+  clientAccountId String? @map("client_account_id")
+  incomeEntryId   String? @map("income_entry_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  items InvoiceItem[]
+
+  @@index([number])
+  @@index([status])
+  @@map("invoices")
+}
+
+/// A single line on an invoice. `label` is the bold lead-in and `detail` the
+/// muted description, matching the design's two-tone item text. `amount` is
+/// the line total in minor units.
+model InvoiceItem {
+  id        String  @id @default(uuid(7))
+  invoiceId String  @map("invoice_id")
+  label     String
+  detail    String?
+  quantity  Int     @default(1)
+  amount    BigInt
+  sortOrder Int     @default(0) @map("sort_order")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+// ---------------------------------------------------------------------------
 // Recurring renewals
 // ---------------------------------------------------------------------------
 

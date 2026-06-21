@@ -120,3 +120,35 @@
     @apply font-sans;
   }
 }
+
+/* Invoice display fonts. Drop the real font files into /public/fonts to get an
+   exact match; until then the fallbacks in each font stack apply. */
+@font-face {
+  font-family: "Antilag";
+  src: url("/fonts/Antilag.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "OffBit";
+  src: url("/fonts/OffBit-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* Print: A4, no page margins (the invoice sets its own), white backdrop. The
+   invoice design is A4-proportioned at 590px wide; zoom scales it edge-to-edge
+   on the printed page (Chrome honours zoom in print). */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+  .invoice-print-scale {
+    zoom: 1.346;
+  }
+}

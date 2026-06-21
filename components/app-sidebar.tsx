@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { label: "Distributions", href: "/distributions" },
   { label: "Renewals", href: "/renewals" },
   { label: "Ledger", href: "/ledger" },
+  { label: "Invoices", href: "/invoices" },
   { label: "Notes", href: "/notes" },
 ];
 
@@ -53,7 +54,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
+    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground print:hidden">
       <div className="px-6 py-5">
         <h1 className="text-lg font-semibold tracking-tight">GY6 Finance</h1>
         <p className="text-xs text-muted-foreground">Internal accounting</p>
