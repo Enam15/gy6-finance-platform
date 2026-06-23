@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
-import { Geist, Source_Serif_4 } from "next/font/google";
+import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 import { auth } from "@/auth";
 import { AppSidebar, type SidebarUser } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
 // Body typeface for the invoice document.
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
@@ -39,7 +39,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("font-sans", geist.variable, sourceSerif.variable)}
+      className={cn("font-sans", sans.variable, sourceSerif.variable)}
     >
       <body className="bg-background text-foreground antialiased">
         <div className="flex min-h-screen">

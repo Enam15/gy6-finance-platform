@@ -4,26 +4,41 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  BookText,
+  LayoutGrid,
+  PieChart,
+  ReceiptText,
+  RefreshCw,
+  StickyNote,
+  Tags,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
   label: string;
   href: string;
+  icon: LucideIcon;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/" },
-  { label: "Accounts", href: "/accounts" },
-  { label: "Categories", href: "/categories" },
-  { label: "Income", href: "/income" },
-  { label: "Expenses", href: "/expenses" },
-  { label: "Transfers", href: "/transfers" },
-  { label: "Distributions", href: "/distributions" },
-  { label: "Renewals", href: "/renewals" },
-  { label: "Ledger", href: "/ledger" },
-  { label: "Invoices", href: "/invoices" },
-  { label: "Notes", href: "/notes" },
+  { label: "Dashboard", href: "/", icon: LayoutGrid },
+  { label: "Accounts", href: "/accounts", icon: Wallet },
+  { label: "Categories", href: "/categories", icon: Tags },
+  { label: "Income", href: "/income", icon: ArrowDownLeft },
+  { label: "Expenses", href: "/expenses", icon: ArrowUpRight },
+  { label: "Transfers", href: "/transfers", icon: ArrowLeftRight },
+  { label: "Distributions", href: "/distributions", icon: PieChart },
+  { label: "Renewals", href: "/renewals", icon: RefreshCw },
+  { label: "Ledger", href: "/ledger", icon: BookText },
+  { label: "Invoices", href: "/invoices", icon: ReceiptText },
+  { label: "Notes", href: "/notes", icon: StickyNote },
 ];
 
 export interface SidebarUser {
@@ -33,6 +48,16 @@ export interface SidebarUser {
 
 interface AppSidebarProps {
   user: SidebarUser | null;
+}
+
+function initialsOf(name: string): string {
+  const letters = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("");
+  return letters.toUpperCase() || "GY";
 }
 
 export function AppSidebar({ user }: AppSidebarProps) {
@@ -47,36 +72,41 @@ export function AppSidebar({ user }: AppSidebarProps) {
     try {
       await signOut({ redirect: true, callbackUrl: "/login" });
     } finally {
-      // signOut redirects so this rarely fires, but reset in case the
-      // navigation is intercepted.
       setSigningOut(false);
     }
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground print:hidden">
-      <div className="px-6 py-5">
-        <h1 className="text-lg font-semibold tracking-tight">GY6 Finance</h1>
-        <p className="text-xs text-muted-foreground">Internal accounting</p>
+    <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden">
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm shadow-primary/30">
+          G6
+        </div>
+        <div className="leading-tight">
+          <p className="text-sm font-semibold">GY6 Finance</p>
+          <p className="text-xs text-muted-foreground">Internal accounting</p>
+        </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 pb-4">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
               ? pathname === "/"
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
+              <Icon className="size-4 shrink-0" />
               {item.label}
             </Link>
           );
@@ -84,14 +114,19 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </nav>
 
       {user && (
-        <div className="border-t border-sidebar-border/50 px-4 py-4">
-          <div className="mb-3 overflow-hidden">
-            <p className="truncate text-sm font-medium leading-tight">
-              {user.name}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
+        <div className="border-t border-sidebar-border px-3 py-4">
+          <div className="mb-3 flex items-center gap-2.5 px-1">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+              {initialsOf(user.name)}
+            </div>
+            <div className="overflow-hidden">
+              <p className="truncate text-sm font-medium leading-tight">
+                {user.name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            </div>
           </div>
           <Button
             type="button"
