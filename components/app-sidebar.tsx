@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -113,9 +114,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
         })}
       </nav>
 
-      {user && (
-        <div className="border-t border-sidebar-border px-3 py-4">
-          <div className="mb-3 flex items-center gap-2.5 px-1">
+      <div className="space-y-2 border-t border-sidebar-border px-3 py-4">
+        {user && (
+          <div className="mb-1 flex items-center gap-2.5 px-1">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
               {initialsOf(user.name)}
             </div>
@@ -128,6 +129,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
               </p>
             </div>
           </div>
+        )}
+        <ThemeToggle className="w-full" />
+        {user && (
           <Button
             type="button"
             variant="outline"
@@ -138,8 +142,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
           >
             {signingOut ? "Signing out..." : "Sign out"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

@@ -5,6 +5,7 @@ import { Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
 import { auth } from "@/auth";
 import { AppSidebar, type SidebarUser } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
 const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
@@ -39,14 +40,22 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("font-sans", sans.variable, sourceSerif.variable)}
     >
       <body className="bg-background text-foreground antialiased">
-        <div className="flex min-h-screen">
-          <AppSidebar user={sidebarUser} />
-          <main className="flex-1 overflow-x-auto">{children}</main>
-        </div>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="flex min-h-screen">
+            <AppSidebar user={sidebarUser} />
+            <main className="flex-1 overflow-x-auto">{children}</main>
+          </div>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
