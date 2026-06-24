@@ -8,7 +8,7 @@ import {
 import { auth } from "@/auth";
 import { DashboardService } from "@/services/dashboard-service";
 import { formatMoney, money } from "@/lib/money";
-import { DashboardCharts } from "@/components/dashboard-charts";
+import { DashboardChartsLazy } from "./_components/dashboard-charts-lazy";
 import {
   QuarterPicker,
   YearPicker,
@@ -171,7 +171,7 @@ export default async function DashboardPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DashboardCharts
+          <DashboardChartsLazy
             points={chartPoints}
             cashMinor={kpis.cashOnHand.toString()}
             receivablesMinor={kpis.outstandingReceivables.toString()}

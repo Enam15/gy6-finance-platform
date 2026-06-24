@@ -15,6 +15,8 @@ export const config = {
   // Run on every path EXCEPT Auth.js's own endpoints, the public health
   // check, Next's static assets, and the favicon.
   matcher: [
-    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico).*)",
+    // Also skip public static assets (svg/png/fonts) so auth doesn't run on
+    // every image/font request.
+    "/((?!api/auth|api/health|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf)$).*)",
   ],
 };

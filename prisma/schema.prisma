@@ -276,7 +276,7 @@ model IncomeEntry {
 
   @@index([clientAccountId])
   @@index([categoryId])
-  @@index([state])
+  @@index([state, entryDate])
   @@index([paymentDueOn])
   @@index([renewalTemplateId])
   @@map("income_entries")
@@ -312,7 +312,7 @@ model ExpenseEntry {
 
   @@index([payeeAccountId])
   @@index([categoryId])
-  @@index([state])
+  @@index([state, entryDate])
   @@index([paymentDueOn])
   @@index([renewalTemplateId])
   @@map("expense_entries")
