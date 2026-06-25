@@ -62,25 +62,26 @@ export default async function LedgerPage({
   // Account lookup needs ALL accounts (including the hidden system
   // accounts - Revenue, Expense, Adjustments, Opening Balances - which
   // appear in postings but are filtered out of the /accounts list).
-  const [entries, accounts, incomeEntries, expenseEntries, categories] =
-    await Promise.all([
-      new StatementEntryService().listRecent(100),
-      new AccountService().listAccounts(),
-      new IncomeService().listEntries(),
-      new ExpenseService().listEntries(),
-      new TransactionCategoryService().listAll(),
-    ]);
+  const [entries, accounts, categories] = await Promise.all([
+    new StatementEntryService().listRecent(100),
+    new AccountService().listAccounts(),
+    new TransactionCategoryService().listAll(),
+  ]);
+
+  // Only the income/expense entries referenced by the shown postings need a
+  // category lookup - fetch just those (id, categoryId), not every row.
+  const sourceIds = [...new Set(entries.map((e) => e.sourceId))];
+  const [incomeRefs, expenseRefs] = await Promise.all([
+    new IncomeService().categoryRefsByIds(sourceIds),
+    new ExpenseService().categoryRefsByIds(sourceIds),
+  ]);
 
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   // Map each income/expense entry id -> its category name, so a ledger
   // posting sourced from one can show which category it belongs to.
   const categoryBySourceId = new Map<string, string>();
-  for (const e of incomeEntries) {
-    const name = categoryNameById.get(e.categoryId);
-    if (name) categoryBySourceId.set(e.id, name);
-  }
-  for (const e of expenseEntries) {
+  for (const e of [...incomeRefs, ...expenseRefs]) {
     const name = categoryNameById.get(e.categoryId);
     if (name) categoryBySourceId.set(e.id, name);
   }

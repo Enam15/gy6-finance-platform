@@ -73,6 +73,13 @@ export class IncomeService {
     return entries.map(withStatus);
   }
 
+  /** (id, categoryId) for a bounded set of entry ids - used by the ledger. */
+  categoryRefsByIds(
+    ids: string[],
+  ): Promise<{ id: string; categoryId: string }[]> {
+    return new IncomeEntryRepository(this.db).categoryRefsByIds(ids);
+  }
+
   /** Sum of amount_due across this client account's CONFIRMED income entries. */
   sumOutstandingForClient(clientAccountId: string): Promise<bigint> {
     return new IncomeEntryRepository(this.db).sumOutstandingForClient(

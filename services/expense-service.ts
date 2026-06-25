@@ -73,6 +73,13 @@ export class ExpenseService {
     return entries.map(withStatus);
   }
 
+  /** (id, categoryId) for a bounded set of entry ids - used by the ledger. */
+  categoryRefsByIds(
+    ids: string[],
+  ): Promise<{ id: string; categoryId: string }[]> {
+    return new ExpenseEntryRepository(this.db).categoryRefsByIds(ids);
+  }
+
   /** Sum of amount_due across this payee account's CONFIRMED expense entries. */
   sumOutstandingForPayee(payeeAccountId: string): Promise<bigint> {
     return new ExpenseEntryRepository(this.db).sumOutstandingForPayee(

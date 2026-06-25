@@ -33,6 +33,17 @@ export class IncomeEntryRepository {
     return this.db.incomeEntry.findUnique({ where: { id } });
   }
 
+  /** Lean (id, categoryId) projection for a bounded set of ids. */
+  categoryRefsByIds(
+    ids: string[],
+  ): Promise<{ id: string; categoryId: string }[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.db.incomeEntry.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, categoryId: true },
+    });
+  }
+
   listAll(): Promise<IncomeEntry[]> {
     return this.db.incomeEntry.findMany({ orderBy: { createdAt: "desc" } });
   }
