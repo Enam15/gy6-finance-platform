@@ -1,5 +1,6 @@
 import type { Invoice, InvoiceItem } from "@/lib/generated/prisma/client";
 import type { InvoiceDocumentData } from "@/components/invoice/invoice-document";
+import { signatureUrlForKey } from "@/lib/invoice/signatories";
 
 export type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
 
@@ -39,6 +40,7 @@ export function toDocumentData(invoice: InvoiceWithItems): InvoiceDocumentData {
     signatoryPhone: invoice.signatoryPhone,
     signatoryEmail: invoice.signatoryEmail,
     notes: invoice.notes,
+    signatureUrl: signatureUrlForKey(invoice.signatureKey),
     items: invoice.items.map((it) => ({
       label: it.label,
       detail: it.detail,

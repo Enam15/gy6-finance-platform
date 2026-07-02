@@ -36,6 +36,7 @@ export interface InvoiceWriteData {
   signatoryTitle?: string | null;
   signatoryPhone?: string | null;
   signatoryEmail?: string | null;
+  signatureKey: string;
   notes?: string | null;
   clientAccountId?: string | null;
   incomeEntryId?: string | null;
@@ -69,6 +70,7 @@ function scalarData(d: InvoiceWriteData) {
     signatoryTitle: d.signatoryTitle ?? null,
     signatoryPhone: d.signatoryPhone ?? null,
     signatoryEmail: d.signatoryEmail ?? null,
+    signatureKey: d.signatureKey,
     notes: d.notes ?? null,
     clientAccountId: d.clientAccountId ?? null,
     incomeEntryId: d.incomeEntryId ?? null,

@@ -3,6 +3,10 @@ import type { InvoiceDocumentData } from "@/components/invoice/invoice-document"
 import type { InvoiceWithItems } from "@/lib/invoice/to-document";
 import { invoiceDateLabel } from "@/lib/invoice/to-document";
 import { INVOICE_DEFAULTS } from "@/lib/invoice/defaults";
+import {
+  DEFAULT_SIGNATURE_KEY,
+  signatureUrlForKey,
+} from "@/lib/invoice/signatories";
 
 export type InvoiceStatusValue = "DRAFT" | "SENT" | "PAID";
 
@@ -37,6 +41,7 @@ export interface InvoiceForm {
   signatoryTitle: string;
   signatoryPhone: string;
   signatoryEmail: string;
+  signatureKey: string;
   notes: string;
   items: InvoiceItemForm[];
 }
@@ -71,6 +76,7 @@ export function blankInvoiceForm(number: number, todayIso: string): InvoiceForm 
     signatoryTitle: INVOICE_DEFAULTS.signatoryTitle,
     signatoryPhone: INVOICE_DEFAULTS.signatoryPhone,
     signatoryEmail: INVOICE_DEFAULTS.signatoryEmail,
+    signatureKey: DEFAULT_SIGNATURE_KEY,
     notes: "",
     items: [emptyItem()],
   };
@@ -103,6 +109,7 @@ export function invoiceToForm(invoice: InvoiceWithItems): InvoiceForm {
     signatoryTitle: s(invoice.signatoryTitle),
     signatoryPhone: s(invoice.signatoryPhone),
     signatoryEmail: s(invoice.signatoryEmail),
+    signatureKey: invoice.signatureKey,
     notes: s(invoice.notes),
     items: invoice.items.map((it) => ({
       label: it.label,
@@ -154,6 +161,7 @@ export function formToDocument(form: InvoiceForm): InvoiceDocumentData {
     signatoryTitle: form.signatoryTitle,
     signatoryPhone: form.signatoryPhone,
     signatoryEmail: form.signatoryEmail,
+    signatureUrl: signatureUrlForKey(form.signatureKey),
     notes: form.notes,
     items: form.items.map((it) => ({
       label: it.label,
@@ -191,6 +199,7 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
     signatoryTitle: u(form.signatoryTitle),
     signatoryPhone: u(form.signatoryPhone),
     signatoryEmail: u(form.signatoryEmail),
+    signatureKey: form.signatureKey,
     notes: u(form.notes),
     items: form.items
       .filter((it) => it.label.trim())

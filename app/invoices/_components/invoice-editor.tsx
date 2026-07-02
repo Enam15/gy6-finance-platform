@@ -32,6 +32,10 @@ import {
   type InvoiceForm,
   type InvoiceStatusValue,
 } from "@/lib/invoice/form";
+import {
+  SIGNATORY_PRESETS,
+  DEFAULT_SIGNATURE_KEY,
+} from "@/lib/invoice/signatories";
 
 const PREVIEW_SCALE = 0.66;
 
@@ -100,6 +104,21 @@ export function InvoiceEditor({
       ...f,
       items:
         f.items.length > 1 ? f.items.filter((_, i) => i !== index) : f.items,
+    }));
+  }
+
+  // Picking a signatory swaps the signature image and pre-fills the block
+  // (all still editable afterwards).
+  function applySignatory(key: string) {
+    const preset = SIGNATORY_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+    setForm((f) => ({
+      ...f,
+      signatureKey: preset.key,
+      signatoryName: preset.name,
+      signatoryTitle: preset.title,
+      signatoryPhone: preset.phone,
+      signatoryEmail: preset.email,
     }));
   }
 
@@ -343,6 +362,28 @@ export function InvoiceEditor({
               <CardTitle className="text-base">Signatory &amp; issuer</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label htmlFor="sg-preset" className="text-xs">
+                  Signatory (sets the signature)
+                </Label>
+                <Select
+                  value={form.signatureKey}
+                  onValueChange={(v) =>
+                    applySignatory(v ?? DEFAULT_SIGNATURE_KEY)
+                  }
+                >
+                  <SelectTrigger id="sg-preset">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SIGNATORY_PRESETS.map((p) => (
+                      <SelectItem key={p.key} value={p.key}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Field id="sg-name" label="Signatory name" value={form.signatoryName} onChange={(v) => set("signatoryName", v)} />
               <Field id="sg-title" label="Signatory title" value={form.signatoryTitle} onChange={(v) => set("signatoryTitle", v)} />
               <Field id="sg-phone" label="Signatory phone" value={form.signatoryPhone} onChange={(v) => set("signatoryPhone", v)} />

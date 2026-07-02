@@ -451,6 +451,9 @@ model Invoice {
   signatoryTitle String? @map("signatory_title")
   signatoryPhone String? @map("signatory_phone")
   signatoryEmail String? @map("signatory_email")
+  // Which signature image to render (see lib/invoice/signatories). The
+  // signatory text fields above stay independently editable.
+  signatureKey   String  @default("itmam") @map("signature_key")
 
   notes String?
 
