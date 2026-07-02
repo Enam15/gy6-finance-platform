@@ -628,17 +628,18 @@ model AppUser {
   @@map("app_users")
 }
 
-/// File attachment metadata for an income or expense entry. The file itself
-/// lives in object storage under `storageKey`; upload wiring arrives later.
-/// Exactly one of incomeEntryId / expenseEntryId is set (DB check enforced).
+/// A file attached to an income or expense entry (payslip, contract, invoice,
+/// receipt - any type). The bytes live in `data` (Postgres bytea) so the file
+/// stays inside the audited DB and is served only through an authenticated
+/// download route. Exactly one of incomeEntryId / expenseEntryId is set.
 model Attachment {
   id             String   @id @default(uuid(7))
   incomeEntryId  String?  @map("income_entry_id")
   expenseEntryId String?  @map("expense_entry_id")
   fileName       String   @map("file_name")
-  storageKey     String   @map("storage_key")
   contentType    String   @map("content_type")
   sizeBytes      Int      @map("size_bytes")
+  data           Bytes
   uploadedAt     DateTime @default(now()) @map("uploaded_at")
   uploadedBy     String?  @map("uploaded_by")
 

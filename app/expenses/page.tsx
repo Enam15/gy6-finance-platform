@@ -27,6 +27,8 @@ import { FullyPaidButton } from "@/components/fully-paid-button";
 import { ReverseButton } from "@/components/reverse-button";
 import { ExportLinks } from "@/components/export-links";
 import { ListSelectFilter } from "@/app/_components/list-select-filter";
+import { AttachmentService } from "@/services/attachment-service";
+import { AttachmentsDialog } from "@/components/attachments-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -67,13 +69,19 @@ export default async function ExpensesPage({
   const accountService = new AccountService();
   const categoryService = new TransactionCategoryService();
 
-  const [entries, accounts, expenseCategories, businessAccounts] =
-    await Promise.all([
-      expenseService.listEntries(),
-      accountService.listVisible(),
-      categoryService.listByKind("EXPENSE"),
-      accountService.listBusinessAccounts(),
-    ]);
+  const [
+    entries,
+    accounts,
+    expenseCategories,
+    businessAccounts,
+    attachmentCounts,
+  ] = await Promise.all([
+    expenseService.listEntries(),
+    accountService.listVisible(),
+    categoryService.listByKind("EXPENSE"),
+    accountService.listBusinessAccounts(),
+    new AttachmentService().countsByExpense(),
+  ]);
 
   const sp = await searchParams;
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
@@ -222,6 +230,12 @@ export default async function ExpensesPage({
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <AttachmentsDialog
+                          kind="expenses"
+                          entryId={entry.id}
+                          label={entry.description}
+                          count={attachmentCounts.get(entry.id) ?? 0}
+                        />
                         {entry.state === "DRAFT" && (
                           <ConfirmExpenseButton
                             entryId={entry.id}

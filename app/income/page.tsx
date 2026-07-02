@@ -27,6 +27,8 @@ import { FullyPaidButton } from "@/components/fully-paid-button";
 import { ReverseButton } from "@/components/reverse-button";
 import { ExportLinks } from "@/components/export-links";
 import { ListSelectFilter } from "@/app/_components/list-select-filter";
+import { AttachmentService } from "@/services/attachment-service";
+import { AttachmentsDialog } from "@/components/attachments-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -67,13 +69,19 @@ export default async function IncomePage({
   const accountService = new AccountService();
   const categoryService = new TransactionCategoryService();
 
-  const [entries, accounts, incomeCategories, businessAccounts] =
-    await Promise.all([
-      incomeService.listEntries(),
-      accountService.listVisible(),
-      categoryService.listByKind("INCOME"),
-      accountService.listBusinessAccounts(),
-    ]);
+  const [
+    entries,
+    accounts,
+    incomeCategories,
+    businessAccounts,
+    attachmentCounts,
+  ] = await Promise.all([
+    incomeService.listEntries(),
+    accountService.listVisible(),
+    categoryService.listByKind("INCOME"),
+    accountService.listBusinessAccounts(),
+    new AttachmentService().countsByIncome(),
+  ]);
 
   const sp = await searchParams;
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
@@ -222,6 +230,12 @@ export default async function IncomePage({
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <AttachmentsDialog
+                          kind="income"
+                          entryId={entry.id}
+                          label={entry.description}
+                          count={attachmentCounts.get(entry.id) ?? 0}
+                        />
                         {entry.state === "DRAFT" && (
                           <ConfirmIncomeButton
                             entryId={entry.id}
