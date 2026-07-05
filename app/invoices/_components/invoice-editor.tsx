@@ -29,9 +29,14 @@ import {
   emptyItem,
   formToDocument,
   formToPayload,
+  formToAppendix,
   type InvoiceForm,
   type InvoiceStatusValue,
 } from "@/lib/invoice/form";
+import {
+  InvoiceAppendix,
+  hasAppendixContent,
+} from "@/components/invoice/invoice-appendix";
 import {
   SIGNATORY_PRESETS,
   DEFAULT_SIGNATURE_KEY,
@@ -86,6 +91,7 @@ export function InvoiceEditor({
   const [saving, setSaving] = useState(false);
 
   const doc = useMemo(() => formToDocument(form), [form]);
+  const appendixData = useMemo(() => formToAppendix(form), [form]);
 
   function set<K extends keyof InvoiceForm>(key: K, value: InvoiceForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -394,6 +400,8 @@ export function InvoiceEditor({
                   <Field id="pm-acc-num" label="Account number" value={form.payAccountNumber} onChange={(v) => set("payAccountNumber", v)} />
                   <Field id="pm-branch" label="Branch name" value={form.payBranch} onChange={(v) => set("payBranch", v)} />
                   <Field id="pm-routing" label="Routing number" value={form.payRouting} onChange={(v) => set("payRouting", v)} />
+                  <Field id="pm-swift" label="Swift code" value={form.paySwift} onChange={(v) => set("paySwift", v)} />
+                  <Field id="pm-bankaddr" label="Bank address" value={form.payBankAddress} onChange={(v) => set("payBankAddress", v)} />
                 </>
               )}
             </CardContent>
@@ -440,6 +448,55 @@ export function InvoiceEditor({
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Formal details (optional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                For formal clients that need a full voucher. Leave blank for a
+                normal invoice — when filled, these render as a details sheet
+                after the invoice.
+              </p>
+
+              <p className="text-xs font-medium text-foreground sm:col-span-2">
+                Recipient information
+              </p>
+              <Field id="rc-name" label="Recipient name" value={form.recipientName} onChange={(v) => set("recipientName", v)} />
+              <Field id="rc-bin" label="Recipient BIN" value={form.recipientBin} onChange={(v) => set("recipientBin", v)} />
+              <Field id="rc-phone" label="Phone" value={form.recipientPhone} onChange={(v) => set("recipientPhone", v)} />
+              <Field id="rc-email" label="Email" value={form.recipientEmail} onChange={(v) => set("recipientEmail", v)} />
+              <div className="sm:col-span-2">
+                <Field id="rc-addr" label="Address" value={form.recipientAddress} onChange={(v) => set("recipientAddress", v)} />
+              </div>
+              <Field id="rc-attn" label="Attention" value={form.recipientAttention} onChange={(v) => set("recipientAttention", v)} />
+
+              <p className="mt-2 text-xs font-medium text-foreground sm:col-span-2">
+                Payee information
+              </p>
+              <Field id="pe-name" label="Payee name" value={form.payeeName} onChange={(v) => set("payeeName", v)} />
+              <Field id="pe-firm" label="Firm name" value={form.payeeFirm} onChange={(v) => set("payeeFirm", v)} />
+              <Field id="pe-bin" label="Payee BIN" value={form.payeeBin} onChange={(v) => set("payeeBin", v)} />
+              <Field id="pe-email" label="Payee email" value={form.payeeEmail} onChange={(v) => set("payeeEmail", v)} />
+              <div className="sm:col-span-2">
+                <Field id="pe-addr" label="Payee address" value={form.payeeAddress} onChange={(v) => set("payeeAddress", v)} />
+              </div>
+              <Field id="pe-work" label="Type of work" value={form.payeeWorkType} onChange={(v) => set("payeeWorkType", v)} />
+              <Field id="pe-country" label="Country of service" value={form.payeeCountry} onChange={(v) => set("payeeCountry", v)} />
+
+              <p className="mt-2 text-xs font-medium text-foreground sm:col-span-2">
+                Project &amp; contract
+              </p>
+              <div className="sm:col-span-2">
+                <Field id="ct-subject" label="Subject of contract" value={form.contractSubject} onChange={(v) => set("contractSubject", v)} />
+              </div>
+              <Field id="ct-no" label="Contract no." value={form.contractNo} onChange={(v) => set("contractNo", v)} />
+              <Field id="ct-period" label="Contract period" value={form.contractPeriod} onChange={(v) => set("contractPeriod", v)} />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Live preview */}
@@ -465,6 +522,14 @@ export function InvoiceEditor({
               <InvoiceDocument data={doc} />
             </div>
           </div>
+          {hasAppendixContent(appendixData) && (
+            <div
+              className="mt-4 overflow-hidden rounded-md border bg-white p-4 shadow-sm"
+              style={{ width: INVOICE_WIDTH * PREVIEW_SCALE }}
+            >
+              <InvoiceAppendix data={appendixData} />
+            </div>
+          )}
         </div>
       </div>
     </div>

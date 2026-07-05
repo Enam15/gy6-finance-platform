@@ -32,6 +32,8 @@ export interface InvoiceWriteData {
   payAccountNumber?: string | null;
   payBranch?: string | null;
   payRouting?: string | null;
+  paySwift?: string | null;
+  payBankAddress?: string | null;
   paymentType: string;
   paymentLinkUrl?: string | null;
   paymentLinkShortUrl?: string | null;
@@ -40,6 +42,22 @@ export interface InvoiceWriteData {
   signatoryPhone?: string | null;
   signatoryEmail?: string | null;
   signatureKey: string;
+  recipientName?: string | null;
+  recipientBin?: string | null;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
+  recipientAddress?: string | null;
+  recipientAttention?: string | null;
+  payeeName?: string | null;
+  payeeFirm?: string | null;
+  payeeBin?: string | null;
+  payeeAddress?: string | null;
+  payeeEmail?: string | null;
+  payeeWorkType?: string | null;
+  payeeCountry?: string | null;
+  contractSubject?: string | null;
+  contractNo?: string | null;
+  contractPeriod?: string | null;
   notes?: string | null;
   clientAccountId?: string | null;
   incomeEntryId?: string | null;
@@ -69,6 +87,8 @@ function scalarData(d: InvoiceWriteData) {
     payAccountNumber: d.payAccountNumber ?? null,
     payBranch: d.payBranch ?? null,
     payRouting: d.payRouting ?? null,
+    paySwift: d.paySwift ?? null,
+    payBankAddress: d.payBankAddress ?? null,
     paymentType: d.paymentType,
     paymentLinkUrl: d.paymentLinkUrl ?? null,
     paymentLinkShortUrl: d.paymentLinkShortUrl ?? null,
@@ -77,6 +97,22 @@ function scalarData(d: InvoiceWriteData) {
     signatoryPhone: d.signatoryPhone ?? null,
     signatoryEmail: d.signatoryEmail ?? null,
     signatureKey: d.signatureKey,
+    recipientName: d.recipientName ?? null,
+    recipientBin: d.recipientBin ?? null,
+    recipientPhone: d.recipientPhone ?? null,
+    recipientEmail: d.recipientEmail ?? null,
+    recipientAddress: d.recipientAddress ?? null,
+    recipientAttention: d.recipientAttention ?? null,
+    payeeName: d.payeeName ?? null,
+    payeeFirm: d.payeeFirm ?? null,
+    payeeBin: d.payeeBin ?? null,
+    payeeAddress: d.payeeAddress ?? null,
+    payeeEmail: d.payeeEmail ?? null,
+    payeeWorkType: d.payeeWorkType ?? null,
+    payeeCountry: d.payeeCountry ?? null,
+    contractSubject: d.contractSubject ?? null,
+    contractNo: d.contractNo ?? null,
+    contractPeriod: d.contractPeriod ?? null,
     notes: d.notes ?? null,
     clientAccountId: d.clientAccountId ?? null,
     incomeEntryId: d.incomeEntryId ?? null,

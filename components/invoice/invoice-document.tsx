@@ -39,6 +39,8 @@ export interface InvoiceDocumentData {
   payAccountNumber?: string | null;
   payBranch?: string | null;
   payRouting?: string | null;
+  paySwift?: string | null;
+  payBankAddress?: string | null;
   paymentType?: string;
   paymentLinkUrl?: string | null;
   paymentLinkShortUrl?: string | null;
@@ -383,6 +385,8 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
               ["Account Number", data.payAccountNumber],
               ["Branch Name", data.payBranch],
               ["Routing Number", data.payRouting],
+              ["Swift Code", data.paySwift],
+              ["Bank Address", data.payBankAddress],
             ]}
           />
         )}

@@ -446,6 +446,8 @@ model Invoice {
   payAccountNumber String? @map("pay_account_number")
   payBranch        String? @map("pay_branch")
   payRouting       String? @map("pay_routing")
+  paySwift         String? @map("pay_swift")
+  payBankAddress   String? @map("pay_bank_address")
 
   // Payment method shown on the invoice: "BANK" (the pay* fields above) or
   // "LINK" (a clickable pay-online button + fallback short link).
@@ -460,6 +462,25 @@ model Invoice {
   // Which signature image to render (see lib/invoice/signatories). The
   // signatory text fields above stay independently editable.
   signatureKey   String  @default("itmam") @map("signature_key")
+
+  // Optional formal-voucher details. Blank on a normal invoice; when any are
+  // filled, a formal-details section renders below the branded invoice.
+  recipientName      String? @map("recipient_name")
+  recipientBin       String? @map("recipient_bin")
+  recipientPhone     String? @map("recipient_phone")
+  recipientEmail     String? @map("recipient_email")
+  recipientAddress   String? @map("recipient_address")
+  recipientAttention String? @map("recipient_attention")
+  payeeName          String? @map("payee_name")
+  payeeFirm          String? @map("payee_firm")
+  payeeBin           String? @map("payee_bin")
+  payeeAddress       String? @map("payee_address")
+  payeeEmail         String? @map("payee_email")
+  payeeWorkType      String? @map("payee_work_type")
+  payeeCountry       String? @map("payee_country")
+  contractSubject    String? @map("contract_subject")
+  contractNo         String? @map("contract_no")
+  contractPeriod     String? @map("contract_period")
 
   notes String?
 

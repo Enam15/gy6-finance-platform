@@ -1,6 +1,7 @@
 import type { Invoice, InvoiceItem } from "@/lib/generated/prisma/client";
 import type { InvoiceDocumentData } from "@/components/invoice/invoice-document";
 import { signatureUrlForKey } from "@/lib/invoice/signatories";
+import type { InvoiceAppendixData } from "@/components/invoice/invoice-appendix";
 
 export type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
 
@@ -35,6 +36,8 @@ export function toDocumentData(invoice: InvoiceWithItems): InvoiceDocumentData {
     payAccountNumber: invoice.payAccountNumber,
     payBranch: invoice.payBranch,
     payRouting: invoice.payRouting,
+    paySwift: invoice.paySwift,
+    payBankAddress: invoice.payBankAddress,
     paymentType: invoice.paymentType,
     paymentLinkUrl: invoice.paymentLinkUrl,
     paymentLinkShortUrl: invoice.paymentLinkShortUrl,
@@ -50,5 +53,36 @@ export function toDocumentData(invoice: InvoiceWithItems): InvoiceDocumentData {
       quantity: it.quantity,
       amount: it.amount.toString(),
     })),
+  };
+}
+
+/** Build the formal-details appendix data from a stored invoice. */
+export function toAppendixData(invoice: InvoiceWithItems): InvoiceAppendixData {
+  return {
+    recipientName: invoice.recipientName,
+    recipientBin: invoice.recipientBin,
+    recipientPhone: invoice.recipientPhone,
+    recipientEmail: invoice.recipientEmail,
+    recipientAddress: invoice.recipientAddress,
+    recipientAttention: invoice.recipientAttention,
+    payeeName: invoice.payeeName,
+    payeeFirm: invoice.payeeFirm,
+    payeeBin: invoice.payeeBin,
+    payeeAddress: invoice.payeeAddress,
+    payeeEmail: invoice.payeeEmail,
+    payeeWorkType: invoice.payeeWorkType,
+    payeeCountry: invoice.payeeCountry,
+    payAccountName: invoice.payAccountName,
+    payAccountNumber: invoice.payAccountNumber,
+    payBank: invoice.payBank,
+    payRouting: invoice.payRouting,
+    paySwift: invoice.paySwift,
+    payBranch: invoice.payBranch,
+    payBankAddress: invoice.payBankAddress,
+    contractSubject: invoice.contractSubject,
+    contractNo: invoice.contractNo,
+    contractPeriod: invoice.contractPeriod,
+    invoiceDate: invoiceDateLabel(invoice.issuanceDate),
+    invoiceNumber: invoice.number.toString().padStart(2, "0"),
   };
 }

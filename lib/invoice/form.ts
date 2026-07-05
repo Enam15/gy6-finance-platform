@@ -7,6 +7,7 @@ import {
   DEFAULT_SIGNATURE_KEY,
   signatureUrlForKey,
 } from "@/lib/invoice/signatories";
+import type { InvoiceAppendixData } from "@/components/invoice/invoice-appendix";
 
 export type InvoiceStatusValue = "DRAFT" | "SENT" | "PAID";
 
@@ -37,6 +38,8 @@ export interface InvoiceForm {
   payAccountNumber: string;
   payBranch: string;
   payRouting: string;
+  paySwift: string;
+  payBankAddress: string;
   paymentType: string;
   paymentLinkUrl: string;
   paymentLinkShortUrl: string;
@@ -45,6 +48,22 @@ export interface InvoiceForm {
   signatoryPhone: string;
   signatoryEmail: string;
   signatureKey: string;
+  recipientName: string;
+  recipientBin: string;
+  recipientPhone: string;
+  recipientEmail: string;
+  recipientAddress: string;
+  recipientAttention: string;
+  payeeName: string;
+  payeeFirm: string;
+  payeeBin: string;
+  payeeAddress: string;
+  payeeEmail: string;
+  payeeWorkType: string;
+  payeeCountry: string;
+  contractSubject: string;
+  contractNo: string;
+  contractPeriod: string;
   notes: string;
   items: InvoiceItemForm[];
 }
@@ -75,6 +94,8 @@ export function blankInvoiceForm(number: number, todayIso: string): InvoiceForm 
     payAccountNumber: INVOICE_DEFAULTS.payAccountNumber,
     payBranch: INVOICE_DEFAULTS.payBranch,
     payRouting: INVOICE_DEFAULTS.payRouting,
+    paySwift: "",
+    payBankAddress: "",
     paymentType: "BANK",
     paymentLinkUrl: "",
     paymentLinkShortUrl: "",
@@ -83,6 +104,22 @@ export function blankInvoiceForm(number: number, todayIso: string): InvoiceForm 
     signatoryPhone: INVOICE_DEFAULTS.signatoryPhone,
     signatoryEmail: INVOICE_DEFAULTS.signatoryEmail,
     signatureKey: DEFAULT_SIGNATURE_KEY,
+    recipientName: "",
+    recipientBin: "",
+    recipientPhone: "",
+    recipientEmail: "",
+    recipientAddress: "",
+    recipientAttention: "",
+    payeeName: "",
+    payeeFirm: "",
+    payeeBin: "",
+    payeeAddress: "",
+    payeeEmail: "",
+    payeeWorkType: "",
+    payeeCountry: "",
+    contractSubject: "",
+    contractNo: "",
+    contractPeriod: "",
     notes: "",
     items: [emptyItem()],
   };
@@ -111,6 +148,8 @@ export function invoiceToForm(invoice: InvoiceWithItems): InvoiceForm {
     payAccountNumber: s(invoice.payAccountNumber),
     payBranch: s(invoice.payBranch),
     payRouting: s(invoice.payRouting),
+    paySwift: s(invoice.paySwift),
+    payBankAddress: s(invoice.payBankAddress),
     paymentType: invoice.paymentType,
     paymentLinkUrl: s(invoice.paymentLinkUrl),
     paymentLinkShortUrl: s(invoice.paymentLinkShortUrl),
@@ -119,6 +158,22 @@ export function invoiceToForm(invoice: InvoiceWithItems): InvoiceForm {
     signatoryPhone: s(invoice.signatoryPhone),
     signatoryEmail: s(invoice.signatoryEmail),
     signatureKey: invoice.signatureKey,
+    recipientName: s(invoice.recipientName),
+    recipientBin: s(invoice.recipientBin),
+    recipientPhone: s(invoice.recipientPhone),
+    recipientEmail: s(invoice.recipientEmail),
+    recipientAddress: s(invoice.recipientAddress),
+    recipientAttention: s(invoice.recipientAttention),
+    payeeName: s(invoice.payeeName),
+    payeeFirm: s(invoice.payeeFirm),
+    payeeBin: s(invoice.payeeBin),
+    payeeAddress: s(invoice.payeeAddress),
+    payeeEmail: s(invoice.payeeEmail),
+    payeeWorkType: s(invoice.payeeWorkType),
+    payeeCountry: s(invoice.payeeCountry),
+    contractSubject: s(invoice.contractSubject),
+    contractNo: s(invoice.contractNo),
+    contractPeriod: s(invoice.contractPeriod),
     notes: s(invoice.notes),
     items: invoice.items.map((it) => ({
       label: it.label,
@@ -166,6 +221,8 @@ export function formToDocument(form: InvoiceForm): InvoiceDocumentData {
     payAccountNumber: form.payAccountNumber,
     payBranch: form.payBranch,
     payRouting: form.payRouting,
+    paySwift: form.paySwift,
+    payBankAddress: form.payBankAddress,
     paymentType: form.paymentType,
     paymentLinkUrl: form.paymentLinkUrl,
     paymentLinkShortUrl: form.paymentLinkShortUrl,
@@ -207,6 +264,8 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
     payAccountNumber: u(form.payAccountNumber),
     payBranch: u(form.payBranch),
     payRouting: u(form.payRouting),
+    paySwift: u(form.paySwift),
+    payBankAddress: u(form.payBankAddress),
     paymentType: form.paymentType,
     paymentLinkUrl: u(form.paymentLinkUrl),
     paymentLinkShortUrl: u(form.paymentLinkShortUrl),
@@ -215,6 +274,22 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
     signatoryPhone: u(form.signatoryPhone),
     signatoryEmail: u(form.signatoryEmail),
     signatureKey: form.signatureKey,
+    recipientName: u(form.recipientName),
+    recipientBin: u(form.recipientBin),
+    recipientPhone: u(form.recipientPhone),
+    recipientEmail: u(form.recipientEmail),
+    recipientAddress: u(form.recipientAddress),
+    recipientAttention: u(form.recipientAttention),
+    payeeName: u(form.payeeName),
+    payeeFirm: u(form.payeeFirm),
+    payeeBin: u(form.payeeBin),
+    payeeAddress: u(form.payeeAddress),
+    payeeEmail: u(form.payeeEmail),
+    payeeWorkType: u(form.payeeWorkType),
+    payeeCountry: u(form.payeeCountry),
+    contractSubject: u(form.contractSubject),
+    contractNo: u(form.contractNo),
+    contractPeriod: u(form.contractPeriod),
     notes: u(form.notes),
     items: form.items
       .filter((it) => it.label.trim())
@@ -230,4 +305,38 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
 /** Grand total of the form's items, in minor units. */
 export function formTotalMinor(form: InvoiceForm): bigint {
   return form.items.reduce((sum, it) => sum + minorFromInput(it.amount), 0n);
+}
+
+/** Formal-details appendix data from the current form (live preview). */
+export function formToAppendix(form: InvoiceForm): InvoiceAppendixData {
+  return {
+    recipientName: form.recipientName,
+    recipientBin: form.recipientBin,
+    recipientPhone: form.recipientPhone,
+    recipientEmail: form.recipientEmail,
+    recipientAddress: form.recipientAddress,
+    recipientAttention: form.recipientAttention,
+    payeeName: form.payeeName,
+    payeeFirm: form.payeeFirm,
+    payeeBin: form.payeeBin,
+    payeeAddress: form.payeeAddress,
+    payeeEmail: form.payeeEmail,
+    payeeWorkType: form.payeeWorkType,
+    payeeCountry: form.payeeCountry,
+    payAccountName: form.payAccountName,
+    payAccountNumber: form.payAccountNumber,
+    payBank: form.payBank,
+    payRouting: form.payRouting,
+    paySwift: form.paySwift,
+    payBranch: form.payBranch,
+    payBankAddress: form.payBankAddress,
+    contractSubject: form.contractSubject,
+    contractNo: form.contractNo,
+    contractPeriod: form.contractPeriod,
+    invoiceDate: isoToLabel(form.issuanceDate),
+    invoiceNumber: String(Number.parseInt(form.number, 10) || 0).padStart(
+      2,
+      "0",
+    ),
+  };
 }
