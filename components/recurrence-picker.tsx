@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -62,15 +62,12 @@ export function RecurrencePicker({
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-2">
             <Label htmlFor={`${idPrefix}-every`}>Every</Label>
-            <Input
+            <NumberInput
               id={`${idPrefix}-every`}
-              type="number"
-              min={1}
-              max={120}
+              decimal={false}
               value={value.customCount}
-              onChange={(e) =>
-                onChange({ ...value, customCount: e.target.value })
-              }
+              onValueChange={(v) => onChange({ ...value, customCount: v })}
+              placeholder="1"
               disabled={disabled}
             />
           </div>

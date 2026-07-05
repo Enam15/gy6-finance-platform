@@ -9,6 +9,8 @@
  * account it was charged through.
  */
 
+import { moneyFromMajor } from "@/lib/money";
+
 export type FeeMethodName = "BANK" | "UPWORK" | "ONLINE_WALLET";
 
 export const FEE_METHOD_OPTIONS: { value: FeeMethodName; label: string }[] = [
@@ -23,18 +25,24 @@ export function feeMethodLabel(method: string): string {
   );
 }
 
+export type FeeMode = "PERCENT" | "FIXED";
+
 export interface FeeState {
   enabled: boolean;
   method: FeeMethodName;
   label: string;
+  mode: FeeMode;
   percent: string;
+  amount: string; // major units, for FIXED mode
 }
 
 export const DEFAULT_FEE: FeeState = {
   enabled: false,
   method: "BANK",
   label: "",
+  mode: "PERCENT",
   percent: "",
+  amount: "",
 };
 
 /** Percent string -> basis points (1..10000), or null when empty/invalid. */
@@ -59,6 +67,43 @@ export function computeFeeMinor(totalMinor: bigint, bps: number): bigint {
   const b = BigInt(Math.round(bps));
   const cut = (totalMinor * b + 5000n) / 10000n;
   return cut > totalMinor ? totalMinor : cut;
+}
+
+/** Parse a major-unit amount string to positive minor units, or null. */
+function fixedAmountMinor(amount: string): bigint | null {
+  const trimmed = amount.trim();
+  if (!trimmed) return null;
+  try {
+    const m = moneyFromMajor(trimmed);
+    return m > 0n ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The fee cut in minor units for the live preview, or null if unresolved. */
+export function feeCutMinor(
+  fee: FeeState,
+  totalMinor: bigint | null,
+): bigint | null {
+  if (fee.mode === "FIXED") return fixedAmountMinor(fee.amount);
+  const bps = percentToBps(fee.percent);
+  if (bps === null || totalMinor === null) return null;
+  return computeFeeMinor(totalMinor, bps);
+}
+
+/** API fee fields from the fee state, or null when disabled/invalid. */
+export function feePayload(fee: FeeState): Record<string, unknown> | null {
+  if (!fee.enabled || !fee.method) return null;
+  const label = fee.label.trim() || undefined;
+  if (fee.mode === "FIXED") {
+    const minor = fixedAmountMinor(fee.amount);
+    if (minor === null) return null;
+    return { feeMethod: fee.method, feeLabel: label, feeAmount: minor.toString() };
+  }
+  const bps = percentToBps(fee.percent);
+  if (bps === null) return null;
+  return { feeMethod: fee.method, feeLabel: label, feeBps: bps };
 }
 
 /** Human description for the fee posting line on the ledger. */

@@ -2,6 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -12,9 +13,9 @@ import {
 import { formatMoney, money } from "@/lib/money";
 import {
   FEE_METHOD_OPTIONS,
-  computeFeeMinor,
-  percentToBps,
+  feeCutMinor,
   type FeeMethodName,
+  type FeeMode,
   type FeeState,
 } from "@/lib/fees";
 
@@ -30,9 +31,9 @@ interface FeePickerProps {
 }
 
 /**
- * Optional "transaction fee" control for the income/expense/transfer dialogs.
- * Captures method + a writeable name + a percentage, and previews the cut and
- * the resulting net/total live.
+ * Optional "transaction fee" control. The fee can be a percentage of the
+ * amount or a fixed amount; either way the cut and resulting net/total are
+ * previewed live.
  */
 export function FeePicker({
   idPrefix,
@@ -42,16 +43,12 @@ export function FeePicker({
   direction,
   disabled,
 }: FeePickerProps) {
-  const bps = percentToBps(value.percent);
-  const fee =
-    totalMinor !== null && bps !== null
-      ? computeFeeMinor(totalMinor, bps)
-      : null;
+  const cut = feeCutMinor(value, totalMinor);
   const net =
-    totalMinor !== null && fee !== null
+    totalMinor !== null && cut !== null
       ? direction === "in"
-        ? totalMinor - fee
-        : totalMinor + fee
+        ? totalMinor - cut
+        : totalMinor + cut
       : null;
   const netLabel = direction === "in" ? "Net received" : "Total cost";
 
@@ -93,40 +90,74 @@ export function FeePicker({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={`${idPrefix}-fee-percent`}>Percentage cut</Label>
+              <Label htmlFor={`${idPrefix}-fee-mode`}>Fee type</Label>
+              <Select
+                value={value.mode}
+                onValueChange={(v) =>
+                  onChange({ ...value, mode: (v as FeeMode) ?? "PERCENT" })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id={`${idPrefix}-fee-mode`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PERCENT">Percentage</SelectItem>
+                  <SelectItem value="FIXED">Fixed fee</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {value.mode === "PERCENT" ? (
+              <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-fee-percent`}>
+                  Percentage cut
+                </Label>
+                <NumberInput
+                  id={`${idPrefix}-fee-percent`}
+                  value={value.percent}
+                  onValueChange={(v) => onChange({ ...value, percent: v })}
+                  placeholder="e.g. 10"
+                  disabled={disabled}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-fee-amount`}>Fee amount</Label>
+                <NumberInput
+                  id={`${idPrefix}-fee-amount`}
+                  value={value.amount}
+                  onValueChange={(v) => onChange({ ...value, amount: v })}
+                  placeholder="e.g. 250"
+                  disabled={disabled}
+                />
+              </div>
+            )}
+            <div className="grid gap-2">
+              <Label htmlFor={`${idPrefix}-fee-label`}>Name (optional)</Label>
               <Input
-                id={`${idPrefix}-fee-percent`}
-                value={value.percent}
-                onChange={(e) => onChange({ ...value, percent: e.target.value })}
-                placeholder="e.g. 10"
-                inputMode="decimal"
+                id={`${idPrefix}-fee-label`}
+                value={value.label}
+                onChange={(e) => onChange({ ...value, label: e.target.value })}
+                placeholder="e.g. Meezan, JazzCash, Upwork"
                 disabled={disabled}
               />
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor={`${idPrefix}-fee-label`}>
-              Name (bank / wallet / Upwork account)
-            </Label>
-            <Input
-              id={`${idPrefix}-fee-label`}
-              value={value.label}
-              onChange={(e) => onChange({ ...value, label: e.target.value })}
-              placeholder="e.g. Meezan Bank, JazzCash, Upwork — Tashfeen"
-              disabled={disabled}
-            />
-          </div>
-
           <div className="rounded-md bg-muted/50 px-3 py-2 text-xs">
-            {fee !== null ? (
+            {cut !== null ? (
               <div className="flex items-center justify-between tabular-nums">
                 <span className="text-muted-foreground">Fee cut</span>
-                <span className="font-medium">{formatMoney(money(fee))}</span>
+                <span className="font-medium">{formatMoney(money(cut))}</span>
               </div>
             ) : (
               <span className="text-muted-foreground">
-                Enter an amount and percentage to see the cut.
+                {value.mode === "PERCENT"
+                  ? "Enter an amount and percentage to see the cut."
+                  : "Enter the fee amount."}
               </span>
             )}
             {net !== null && (

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -58,6 +59,8 @@ function Field({
   onChange,
   placeholder,
   type,
+  numeric,
+  integer,
 }: {
   id: string;
   label: string;
@@ -65,19 +68,32 @@ function Field({
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  /** Restrict input to digits (and a decimal point unless `integer`). */
+  numeric?: boolean;
+  integer?: boolean;
 }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id} className="text-xs">
         {label}
       </Label>
-      <Input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-      />
+      {numeric ? (
+        <NumberInput
+          id={id}
+          value={value}
+          onValueChange={onChange}
+          decimal={!integer}
+          placeholder={placeholder}
+        />
+      ) : (
+        <Input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          type={type}
+        />
+      )}
     </div>
   );
 }
@@ -207,6 +223,8 @@ export function InvoiceEditor({
                 value={form.number}
                 onChange={(v) => set("number", v)}
                 placeholder="1"
+                numeric
+                integer
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="inv-status" className="text-xs">
@@ -261,6 +279,8 @@ export function InvoiceEditor({
                 value={form.dueInDays}
                 onChange={(v) => set("dueInDays", v)}
                 placeholder="7"
+                numeric
+                integer
               />
             </CardContent>
           </Card>
@@ -336,6 +356,8 @@ export function InvoiceEditor({
                     value={it.quantity}
                     onChange={(v) => setItem(i, "quantity", v)}
                     placeholder="1"
+                    numeric
+                    integer
                   />
                   <Field
                     id={`it-amount-${i}`}
@@ -343,6 +365,7 @@ export function InvoiceEditor({
                     value={it.amount}
                     onChange={(v) => setItem(i, "amount", v)}
                     placeholder="50000"
+                    numeric
                   />
                   <div className="sm:col-span-2 flex justify-end">
                     <Button

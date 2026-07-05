@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, money, moneyFromMajor } from "@/lib/money";
 
@@ -139,12 +140,12 @@ export function AdjustBalanceButton({
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label htmlFor="adjust-new-balance">New balance</Label>
-                <Input
+                <NumberInput
                   id="adjust-new-balance"
                   value={newBalanceInput}
-                  onChange={(e) => setNewBalanceInput(e.target.value)}
+                  onValueChange={setNewBalanceInput}
+                  allowNegative
                   placeholder="1234.56"
-                  inputMode="decimal"
                   required
                 />
               </div>

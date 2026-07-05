@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -268,22 +269,21 @@ export function CreateRenewalDialog({
             <div className="grid grid-cols-3 gap-3">
               <div className="grid gap-2">
                 <Label htmlFor="renewal-amount">Amount</Label>
-                <Input
+                <NumberInput
                   id="renewal-amount"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onValueChange={setAmount}
                   placeholder="1234.56"
-                  inputMode="decimal"
                   required
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="renewal-interval-count">Every</Label>
-                <Input
+                <NumberInput
                   id="renewal-interval-count"
                   value={intervalCount}
-                  onChange={(e) => setIntervalCount(e.target.value)}
-                  inputMode="numeric"
+                  onValueChange={setIntervalCount}
+                  decimal={false}
                   placeholder="1"
                   required
                 />
@@ -310,11 +310,11 @@ export function CreateRenewalDialog({
             <div className="grid grid-cols-3 gap-3">
               <div className="grid gap-2">
                 <Label htmlFor="renewal-terms">Payment terms (days)</Label>
-                <Input
+                <NumberInput
                   id="renewal-terms"
                   value={paymentTermsDays}
-                  onChange={(e) => setPaymentTermsDays(e.target.value)}
-                  inputMode="numeric"
+                  onValueChange={setPaymentTermsDays}
+                  decimal={false}
                   placeholder="0"
                 />
               </div>

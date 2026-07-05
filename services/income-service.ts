@@ -23,27 +23,44 @@ const createSchema = z.object({
   feeMethod: z.enum(["BANK", "UPWORK", "ONLINE_WALLET"]).nullish(),
   feeLabel: z.string().trim().max(120).nullish(),
   feeBps: z.coerce.number().int().min(0).max(10000).nullish(),
+  feeAmount: z.coerce
+    .bigint()
+    .refine((v) => v >= 0n, "Fee amount cannot be negative")
+    .nullish(),
 });
 
 export type CreateIncomeInput = z.infer<typeof createSchema>;
 
-/** Normalise the optional fee inputs into the columns stored on an entry. */
+/**
+ * Normalise the optional fee inputs into the columns stored on an entry.
+ * A fee is either a percentage (feeBps) or a fixed amount (feeAmount); the
+ * percentage takes precedence when both are somehow present.
+ */
 function resolveFee(
   totalAmount: bigint,
   feeMethod: "BANK" | "UPWORK" | "ONLINE_WALLET" | null | undefined,
   feeLabel: string | null | undefined,
   feeBps: number | null | undefined,
+  feeAmount: bigint | null | undefined,
 ) {
+  const label = feeLabel && feeLabel.length > 0 ? feeLabel : null;
   const bps = feeBps ?? 0;
-  if (!feeMethod || bps <= 0) {
-    return { feeMethod: null, feeLabel: null, feeBps: null, feeAmount: null };
+  if (feeMethod && bps > 0) {
+    return {
+      feeMethod,
+      feeLabel: label,
+      feeBps: bps,
+      feeAmount: computeFeeMinor(totalAmount, bps),
+    };
   }
-  return {
-    feeMethod,
-    feeLabel: feeLabel && feeLabel.length > 0 ? feeLabel : null,
-    feeBps: bps,
-    feeAmount: computeFeeMinor(totalAmount, bps),
-  };
+  // Fixed-amount fee (no percentage): cap at the total so the net can never
+  // go negative, matching the percentage path's cap.
+  const fixed = feeAmount ?? 0n;
+  if (feeMethod && fixed > 0n) {
+    const capped = fixed > totalAmount ? totalAmount : fixed;
+    return { feeMethod, feeLabel: label, feeBps: null, feeAmount: capped };
+  }
+  return { feeMethod: null, feeLabel: null, feeBps: null, feeAmount: null };
 }
 
 export interface IncomeEntryWithStatus extends IncomeEntry {
@@ -143,6 +160,7 @@ export class IncomeService {
       data.feeMethod,
       data.feeLabel,
       data.feeBps,
+      data.feeAmount,
     );
 
     const entry = await this.db.$transaction(async (tx) => {

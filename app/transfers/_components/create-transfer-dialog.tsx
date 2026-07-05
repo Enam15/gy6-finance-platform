@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { moneyFromMajor } from "@/lib/money";
 import { FeePicker } from "@/components/fee-picker";
-import { DEFAULT_FEE, percentToBps, type FeeState } from "@/lib/fees";
+import { DEFAULT_FEE, feePayload, type FeeState } from "@/lib/fees";
 
 export interface BusinessAccountOption {
   id: string;
@@ -104,18 +105,15 @@ export function CreateTransferDialog({
       return;
     }
 
-    let feeBps: number | null = null;
-    if (fee.enabled) {
-      feeBps = percentToBps(fee.percent);
-      if (feeBps === null) {
-        toast.error("Enter a valid fee percentage between 0 and 100");
-        return;
-      }
+    const feeFields = feePayload(fee) ?? {};
+    if (fee.enabled && !feePayload(fee)) {
+      toast.error(
+        fee.mode === "PERCENT"
+          ? "Enter a valid fee percentage between 0 and 100"
+          : "Enter a valid fee amount",
+      );
+      return;
     }
-    const feeFields =
-      feeBps !== null
-        ? { feeMethod: fee.method, feeLabel: fee.label.trim() || undefined, feeBps }
-        : {};
 
     setSubmitting(true);
     try {
@@ -212,12 +210,11 @@ export function CreateTransferDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
                 <Label htmlFor="transfer-amount">Amount</Label>
-                <Input
+                <NumberInput
                   id="transfer-amount"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onValueChange={setAmount}
                   placeholder="1234.56"
-                  inputMode="decimal"
                   required
                 />
               </div>
