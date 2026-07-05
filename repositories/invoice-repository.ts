@@ -32,6 +32,9 @@ export interface InvoiceWriteData {
   payAccountNumber?: string | null;
   payBranch?: string | null;
   payRouting?: string | null;
+  paymentType: string;
+  paymentLinkUrl?: string | null;
+  paymentLinkShortUrl?: string | null;
   signatoryName?: string | null;
   signatoryTitle?: string | null;
   signatoryPhone?: string | null;
@@ -66,6 +69,9 @@ function scalarData(d: InvoiceWriteData) {
     payAccountNumber: d.payAccountNumber ?? null,
     payBranch: d.payBranch ?? null,
     payRouting: d.payRouting ?? null,
+    paymentType: d.paymentType,
+    paymentLinkUrl: d.paymentLinkUrl ?? null,
+    paymentLinkShortUrl: d.paymentLinkShortUrl ?? null,
     signatoryName: d.signatoryName ?? null,
     signatoryTitle: d.signatoryTitle ?? null,
     signatoryPhone: d.signatoryPhone ?? null,

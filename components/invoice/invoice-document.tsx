@@ -39,6 +39,9 @@ export interface InvoiceDocumentData {
   payAccountNumber?: string | null;
   payBranch?: string | null;
   payRouting?: string | null;
+  paymentType?: string;
+  paymentLinkUrl?: string | null;
+  paymentLinkShortUrl?: string | null;
 
   signatoryName?: string | null;
   signatoryTitle?: string | null;
@@ -313,17 +316,76 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         Payment Method
       </div>
       <div style={{ position: "absolute", left: 319, top: 524, width: 243 }}>
-        <Fields
-          align="right"
-          pairs={[
-            ["Bank", data.payBank],
-            ["Account Name", data.payAccountName],
-            ["Account Type", data.payAccountType],
-            ["Account Number", data.payAccountNumber],
-            ["Branch Name", data.payBranch],
-            ["Routing Number", data.payRouting],
-          ]}
-        />
+        {data.paymentType === "LINK" ? (
+          <div style={{ textAlign: "right" }}>
+            <div
+              style={{
+                color: INK60,
+                fontSize: 12,
+                fontFamily: SERIF,
+                lineHeight: "18px",
+              }}
+            >
+              Pay securely online via the link below.
+            </div>
+            {data.paymentLinkUrl ? (
+              <a
+                href={data.paymentLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "block",
+                  marginTop: 14,
+                  background: "#2E3439",
+                  color: "#F4EEDF",
+                  borderRadius: 14,
+                  padding: "12px 0",
+                  textAlign: "center",
+                  textDecoration: "none",
+                  fontFamily: SERIF,
+                  fontSize: 19,
+                }}
+              >
+                Payment Link
+              </a>
+            ) : null}
+            {data.paymentLinkShortUrl ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  color: INK60,
+                  fontSize: 12,
+                  fontFamily: SERIF,
+                  lineHeight: "18px",
+                }}
+              >
+                Button not working?
+                <br />
+                Pay here:{" "}
+                <a
+                  href={data.paymentLinkShortUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: INK60 }}
+                >
+                  {data.paymentLinkShortUrl}
+                </a>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <Fields
+            align="right"
+            pairs={[
+              ["Bank", data.payBank],
+              ["Account Name", data.payAccountName],
+              ["Account Type", data.payAccountType],
+              ["Account Number", data.payAccountNumber],
+              ["Branch Name", data.payBranch],
+              ["Routing Number", data.payRouting],
+            ]}
+          />
+        )}
       </div>
 
       {/* Signature + signatory block */}

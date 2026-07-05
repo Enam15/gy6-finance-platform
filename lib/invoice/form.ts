@@ -37,6 +37,9 @@ export interface InvoiceForm {
   payAccountNumber: string;
   payBranch: string;
   payRouting: string;
+  paymentType: string;
+  paymentLinkUrl: string;
+  paymentLinkShortUrl: string;
   signatoryName: string;
   signatoryTitle: string;
   signatoryPhone: string;
@@ -72,6 +75,9 @@ export function blankInvoiceForm(number: number, todayIso: string): InvoiceForm 
     payAccountNumber: INVOICE_DEFAULTS.payAccountNumber,
     payBranch: INVOICE_DEFAULTS.payBranch,
     payRouting: INVOICE_DEFAULTS.payRouting,
+    paymentType: "BANK",
+    paymentLinkUrl: "",
+    paymentLinkShortUrl: "",
     signatoryName: INVOICE_DEFAULTS.signatoryName,
     signatoryTitle: INVOICE_DEFAULTS.signatoryTitle,
     signatoryPhone: INVOICE_DEFAULTS.signatoryPhone,
@@ -105,6 +111,9 @@ export function invoiceToForm(invoice: InvoiceWithItems): InvoiceForm {
     payAccountNumber: s(invoice.payAccountNumber),
     payBranch: s(invoice.payBranch),
     payRouting: s(invoice.payRouting),
+    paymentType: invoice.paymentType,
+    paymentLinkUrl: s(invoice.paymentLinkUrl),
+    paymentLinkShortUrl: s(invoice.paymentLinkShortUrl),
     signatoryName: s(invoice.signatoryName),
     signatoryTitle: s(invoice.signatoryTitle),
     signatoryPhone: s(invoice.signatoryPhone),
@@ -157,6 +166,9 @@ export function formToDocument(form: InvoiceForm): InvoiceDocumentData {
     payAccountNumber: form.payAccountNumber,
     payBranch: form.payBranch,
     payRouting: form.payRouting,
+    paymentType: form.paymentType,
+    paymentLinkUrl: form.paymentLinkUrl,
+    paymentLinkShortUrl: form.paymentLinkShortUrl,
     signatoryName: form.signatoryName,
     signatoryTitle: form.signatoryTitle,
     signatoryPhone: form.signatoryPhone,
@@ -195,6 +207,9 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
     payAccountNumber: u(form.payAccountNumber),
     payBranch: u(form.payBranch),
     payRouting: u(form.payRouting),
+    paymentType: form.paymentType,
+    paymentLinkUrl: u(form.paymentLinkUrl),
+    paymentLinkShortUrl: u(form.paymentLinkShortUrl),
     signatoryName: u(form.signatoryName),
     signatoryTitle: u(form.signatoryTitle),
     signatoryPhone: u(form.signatoryPhone),

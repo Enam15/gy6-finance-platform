@@ -348,12 +348,54 @@ export function InvoiceEditor({
               <CardTitle className="text-base">Payment method</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              <Field id="pm-bank" label="Bank" value={form.payBank} onChange={(v) => set("payBank", v)} />
-              <Field id="pm-acc-name" label="Account name" value={form.payAccountName} onChange={(v) => set("payAccountName", v)} />
-              <Field id="pm-acc-type" label="Account type" value={form.payAccountType} onChange={(v) => set("payAccountType", v)} />
-              <Field id="pm-acc-num" label="Account number" value={form.payAccountNumber} onChange={(v) => set("payAccountNumber", v)} />
-              <Field id="pm-branch" label="Branch name" value={form.payBranch} onChange={(v) => set("payBranch", v)} />
-              <Field id="pm-routing" label="Routing number" value={form.payRouting} onChange={(v) => set("payRouting", v)} />
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label htmlFor="pm-type" className="text-xs">
+                  Show on invoice
+                </Label>
+                <Select
+                  value={form.paymentType}
+                  onValueChange={(v) => set("paymentType", v ?? "BANK")}
+                >
+                  <SelectTrigger id="pm-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BANK">Bank details</SelectItem>
+                    <SelectItem value="LINK">Payment link</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.paymentType === "LINK" ? (
+                <>
+                  <div className="sm:col-span-2">
+                    <Field
+                      id="pm-link"
+                      label="Payment link URL (the button)"
+                      value={form.paymentLinkUrl}
+                      onChange={(v) => set("paymentLinkUrl", v)}
+                      placeholder="https://contra.com/payment-link/…"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Field
+                      id="pm-short"
+                      label="Fallback short link (optional)"
+                      value={form.paymentLinkShortUrl}
+                      onChange={(v) => set("paymentLinkShortUrl", v)}
+                      placeholder="https://surl.li/…"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Field id="pm-bank" label="Bank" value={form.payBank} onChange={(v) => set("payBank", v)} />
+                  <Field id="pm-acc-name" label="Account name" value={form.payAccountName} onChange={(v) => set("payAccountName", v)} />
+                  <Field id="pm-acc-type" label="Account type" value={form.payAccountType} onChange={(v) => set("payAccountType", v)} />
+                  <Field id="pm-acc-num" label="Account number" value={form.payAccountNumber} onChange={(v) => set("payAccountNumber", v)} />
+                  <Field id="pm-branch" label="Branch name" value={form.payBranch} onChange={(v) => set("payBranch", v)} />
+                  <Field id="pm-routing" label="Routing number" value={form.payRouting} onChange={(v) => set("payRouting", v)} />
+                </>
+              )}
             </CardContent>
           </Card>
 

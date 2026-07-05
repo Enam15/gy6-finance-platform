@@ -447,6 +447,12 @@ model Invoice {
   payBranch        String? @map("pay_branch")
   payRouting       String? @map("pay_routing")
 
+  // Payment method shown on the invoice: "BANK" (the pay* fields above) or
+  // "LINK" (a clickable pay-online button + fallback short link).
+  paymentType         String  @default("BANK") @map("payment_type")
+  paymentLinkUrl      String? @map("payment_link_url")
+  paymentLinkShortUrl String? @map("payment_link_short_url")
+
   signatoryName  String? @map("signatory_name")
   signatoryTitle String? @map("signatory_title")
   signatoryPhone String? @map("signatory_phone")
