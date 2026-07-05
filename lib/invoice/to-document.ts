@@ -30,6 +30,8 @@ export function toDocumentData(invoice: InvoiceWithItems): InvoiceDocumentData {
     billToEmail: invoice.billToEmail,
     billToPhone: invoice.billToPhone,
     billToTin: invoice.billToTin,
+    billToBin: invoice.recipientBin,
+    billToAttention: invoice.recipientAttention,
     payBank: invoice.payBank,
     payAccountName: invoice.payAccountName,
     payAccountType: invoice.payAccountType,

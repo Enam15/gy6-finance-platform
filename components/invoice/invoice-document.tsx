@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { currencySymbol } from "@/lib/invoice/currencies";
 
 /**
  * Faithful render of GY6's invoice design (do not alter the layout/typography
@@ -32,6 +33,8 @@ export interface InvoiceDocumentData {
   billToEmail?: string | null;
   billToPhone?: string | null;
   billToTin?: string | null;
+  billToBin?: string | null;
+  billToAttention?: string | null;
 
   payBank?: string | null;
   payAccountName?: string | null;
@@ -87,7 +90,17 @@ function formatAmount(minor: bigint): string {
 }
 
 function symbol(currency: string): string {
-  return currency === "BDT" ? "Tk" : currency;
+  return currencySymbol(currency);
+}
+
+/** Ensure a user-entered URL is absolute so the link actually navigates
+ *  (a bare "contra.com/…" would otherwise be treated as a relative path). */
+function normalizeUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (/^(https?:\/\/|mailto:)/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }
 
 /** One "Label: value" line block, matching the two-tone field styling. */
@@ -298,6 +311,8 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             ["Email", data.billToEmail],
             ["Phone", data.billToPhone],
             ["TIN Number", data.billToTin],
+            ["BIN", data.billToBin],
+            ["Attention", data.billToAttention],
           ]}
         />
       </div>
@@ -332,7 +347,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             </div>
             {data.paymentLinkUrl ? (
               <a
-                href={data.paymentLinkUrl}
+                href={normalizeUrl(data.paymentLinkUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -365,7 +380,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
                 <br />
                 Pay here:{" "}
                 <a
-                  href={data.paymentLinkShortUrl}
+                  href={normalizeUrl(data.paymentLinkShortUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: INK60 }}

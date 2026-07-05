@@ -41,6 +41,7 @@ import {
   SIGNATORY_PRESETS,
   DEFAULT_SIGNATURE_KEY,
 } from "@/lib/invoice/signatories";
+import { CURRENCIES } from "@/lib/invoice/currencies";
 
 const PREVIEW_SCALE = 0.66;
 
@@ -227,13 +228,26 @@ export function InvoiceEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <Field
-                id="inv-currency"
-                label="Currency"
-                value={form.currency}
-                onChange={(v) => set("currency", v)}
-                placeholder="BDT"
-              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="inv-currency" className="text-xs">
+                  Currency
+                </Label>
+                <Select
+                  value={form.currency}
+                  onValueChange={(v) => set("currency", v ?? "BDT")}
+                >
+                  <SelectTrigger id="inv-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Field
                 id="inv-date"
                 label="Issuance date"
@@ -265,7 +279,7 @@ export function InvoiceEditor({
               />
               <Field
                 id="bt-tin"
-                label="TIN number"
+                label="TIN number (optional)"
                 value={form.billToTin}
                 onChange={(v) => set("billToTin", v)}
               />

@@ -215,6 +215,8 @@ export function formToDocument(form: InvoiceForm): InvoiceDocumentData {
     billToEmail: form.billToEmail,
     billToPhone: form.billToPhone,
     billToTin: form.billToTin,
+    billToBin: form.recipientBin,
+    billToAttention: form.recipientAttention,
     payBank: form.payBank,
     payAccountName: form.payAccountName,
     payAccountType: form.payAccountType,

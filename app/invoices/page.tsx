@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InvoiceService } from "@/services/invoice-service";
 import { invoiceDateLabel } from "@/lib/invoice/to-document";
+import { currencySymbol } from "@/lib/invoice/currencies";
 import type { InvoiceStatus } from "@/lib/generated/prisma/client";
 import { DeleteInvoiceButton } from "./_components/delete-invoice-button";
 
@@ -38,7 +39,7 @@ function statusVariant(status: InvoiceStatus): BadgeVariant {
 
 function formatTotal(items: { amount: bigint }[], currency: string): string {
   const total = items.reduce((sum, it) => sum + it.amount, 0n);
-  const sym = currency === "BDT" ? "Tk" : currency;
+  const sym = currencySymbol(currency);
   const major = total / 100n;
   const cents = total % 100n;
   const m = major.toLocaleString("en-US");
