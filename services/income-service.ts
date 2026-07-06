@@ -27,6 +27,7 @@ const createSchema = z.object({
     .bigint()
     .refine((v) => v >= 0n, "Fee amount cannot be negative")
     .nullish(),
+  notes: z.string().trim().max(2000).nullish(),
 });
 
 export type CreateIncomeInput = z.infer<typeof createSchema>;
@@ -175,6 +176,7 @@ export class IncomeService {
         feeLabel: fee.feeLabel,
         feeBps: fee.feeBps,
         feeAmount: fee.feeAmount,
+        notes: data.notes ?? null,
       });
       await new AuditLogRepository(tx).record({
         action: "CREATE",
@@ -191,6 +193,89 @@ export class IncomeService {
         actorLabel: options.actorLabel ?? null,
       });
       return created;
+    });
+
+    return ok(entry);
+  }
+
+  /**
+   * Edit a DRAFT income entry in place. Confirmed/reversed entries are
+   * immutable (they have already posted to the ledger) - correct those via a
+   * reversal instead. Re-validates accounts, category and fee just like
+   * creation.
+   */
+  async updateDraft(
+    id: string,
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<IncomeEntry>> {
+    const parsed = createSchema.safeParse(input);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((i) => i.message).join("; "));
+    }
+    const data = parsed.data;
+
+    const existing = await new IncomeEntryRepository(this.db).findById(id);
+    if (!existing) return err(`Income entry ${id} was not found`);
+    if (existing.state !== "DRAFT") {
+      return err("Only draft income entries can be edited");
+    }
+
+    const account = await new AccountRepository(this.db).findById(
+      data.clientAccountId,
+    );
+    if (!account) return err(`Account ${data.clientAccountId} was not found`);
+    const category = await new TransactionCategoryRepository(this.db).findById(
+      data.categoryId,
+    );
+    if (!category) return err(`Category ${data.categoryId} was not found`);
+    if (category.kind !== "INCOME") {
+      return err("Category must be of kind INCOME");
+    }
+
+    const fee = resolveFee(
+      data.totalAmount,
+      data.feeMethod,
+      data.feeLabel,
+      data.feeBps,
+      data.feeAmount,
+    );
+
+    const entry = await this.db.$transaction(async (tx) => {
+      const updated = await new IncomeEntryRepository(tx).updateDraft(id, {
+        clientAccountId: data.clientAccountId,
+        categoryId: data.categoryId,
+        description: data.description,
+        totalAmount: data.totalAmount,
+        entryDate: data.entryDate,
+        paymentDueOn: data.paymentDueOn,
+        feeMethod: fee.feeMethod,
+        feeLabel: fee.feeLabel,
+        feeBps: fee.feeBps,
+        feeAmount: fee.feeAmount,
+        notes: data.notes ?? null,
+      });
+      await new AuditLogRepository(tx).record({
+        action: "UPDATE",
+        entityType: "IncomeEntry",
+        entityId: updated.id,
+        summary: `Draft income "${updated.description}" edited`,
+        before: {
+          description: existing.description,
+          totalAmount: existing.totalAmount.toString(),
+          clientAccountId: existing.clientAccountId,
+          categoryId: existing.categoryId,
+        },
+        after: {
+          description: updated.description,
+          totalAmount: updated.totalAmount.toString(),
+          clientAccountId: updated.clientAccountId,
+          categoryId: updated.categoryId,
+        },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return updated;
     });
 
     return ok(entry);

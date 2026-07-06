@@ -20,6 +20,23 @@ export interface CreateIncomeEntryData {
   feeLabel?: string | null;
   feeBps?: number | null;
   feeAmount?: bigint | null;
+  /** Free-text notes attached to the entry. */
+  notes?: string | null;
+}
+
+/** Editable fields when updating a DRAFT income entry. */
+export interface UpdateIncomeEntryData {
+  clientAccountId: string;
+  categoryId: string;
+  description: string;
+  totalAmount: bigint;
+  entryDate: Date;
+  paymentDueOn: Date;
+  feeMethod?: FeeMethod | null;
+  feeLabel?: string | null;
+  feeBps?: number | null;
+  feeAmount?: bigint | null;
+  notes?: string | null;
 }
 
 /**
@@ -72,6 +89,32 @@ export class IncomeEntryRepository {
         feeLabel: data.feeLabel ?? null,
         feeBps: data.feeBps ?? null,
         feeAmount: data.feeAmount ?? null,
+        notes: data.notes ?? null,
+      },
+    });
+  }
+
+  /**
+   * Overwrite the editable fields of an entry. Only ever called for DRAFT
+   * entries (the service guards the state), so amount_paid is still 0 and
+   * amount_due tracks total_amount.
+   */
+  updateDraft(id: string, data: UpdateIncomeEntryData): Promise<IncomeEntry> {
+    return this.db.incomeEntry.update({
+      where: { id },
+      data: {
+        clientAccountId: data.clientAccountId,
+        categoryId: data.categoryId,
+        description: data.description,
+        totalAmount: data.totalAmount,
+        amountDue: data.totalAmount,
+        entryDate: data.entryDate,
+        paymentDueOn: data.paymentDueOn,
+        feeMethod: data.feeMethod ?? null,
+        feeLabel: data.feeLabel ?? null,
+        feeBps: data.feeBps ?? null,
+        feeAmount: data.feeAmount ?? null,
+        notes: data.notes ?? null,
       },
     });
   }

@@ -100,8 +100,8 @@ export function RecurrencePicker({
 
       {value.repeat !== "none" && (
         <p className="text-xs text-muted-foreground">
-          This entry is created now; a renewal template generates the next ones
-          automatically. Manage or pause it on the Renewals page.
+          This entry is created now; a repeat is scheduled and the next ones
+          are generated automatically.
         </p>
       )}
     </div>

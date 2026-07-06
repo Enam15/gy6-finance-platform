@@ -13,16 +13,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { NumberInput } from "@/components/ui/number-input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { moneyFromMajor } from "@/lib/money";
 import { RecurrencePicker } from "@/components/recurrence-picker";
 import {
@@ -32,8 +22,9 @@ import {
   resolveInterval,
   type RecurrenceState,
 } from "@/lib/recurrence";
-import { FeePicker } from "@/components/fee-picker";
-import { DEFAULT_FEE, feePayload, type FeeState } from "@/lib/fees";
+import { EntryFormFields } from "@/components/entry-form-fields";
+import { blankEntryForm, type EntryFormState } from "@/lib/entry-form";
+import { feePayload } from "@/lib/fees";
 
 export interface AccountOption {
   id: string;
@@ -53,22 +44,6 @@ interface ApiError {
   error?: string;
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Parse the amount field to positive minor units, or null if not yet valid. */
-function parseAmountMinor(value: string): bigint | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  try {
-    const m = moneyFromMajor(trimmed);
-    return m > 0n ? m : null;
-  } catch {
-    return null;
-  }
-}
-
 export function CreateIncomeDialog({
   accounts,
   categories,
@@ -76,26 +51,14 @@ export function CreateIncomeDialog({
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
-  const [clientAccountId, setClientAccountId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [entryDate, setEntryDate] = useState(todayIso);
-  const [paymentDueOn, setPaymentDueOn] = useState(todayIso);
+  const [form, setForm] = useState<EntryFormState>(blankEntryForm);
   const [recurrence, setRecurrence] =
     useState<RecurrenceState>(DEFAULT_RECURRENCE);
-  const [fee, setFee] = useState<FeeState>(DEFAULT_FEE);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
-    setClientAccountId("");
-    setCategoryId("");
-    setDescription("");
-    setAmount("");
-    setEntryDate(todayIso());
-    setPaymentDueOn(todayIso());
+    setForm(blankEntryForm());
     setRecurrence(DEFAULT_RECURRENCE);
-    setFee(DEFAULT_FEE);
   }
 
   function onOpenChange(next: boolean) {
@@ -105,11 +68,11 @@ export function CreateIncomeDialog({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedDescription = description.trim();
-    const trimmedAmount = amount.trim();
+    const trimmedDescription = form.description.trim();
+    const trimmedAmount = form.amount.trim();
     if (
-      !clientAccountId ||
-      !categoryId ||
+      !form.accountId ||
+      !form.categoryId ||
       !trimmedDescription ||
       !trimmedAmount
     ) {
@@ -128,10 +91,10 @@ export function CreateIncomeDialog({
       return;
     }
 
-    const feeFields = feePayload(fee) ?? {};
-    if (fee.enabled && !feePayload(fee)) {
+    const feeFields = feePayload(form.fee) ?? {};
+    if (form.fee.enabled && !feePayload(form.fee)) {
       toast.error(
-        fee.mode === "PERCENT"
+        form.fee.mode === "PERCENT"
           ? "Enter a valid fee percentage between 0 and 100"
           : "Enter a valid fee amount",
       );
@@ -144,12 +107,13 @@ export function CreateIncomeDialog({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          clientAccountId,
-          categoryId,
+          clientAccountId: form.accountId,
+          categoryId: form.categoryId,
           description: trimmedDescription,
           totalAmount: minor.toString(),
-          entryDate,
-          paymentDueOn,
+          entryDate: form.entryDate,
+          paymentDueOn: form.paymentDueOn,
+          notes: form.notes.trim() ? form.notes.trim() : undefined,
           ...feeFields,
         }),
       });
@@ -167,14 +131,14 @@ export function CreateIncomeDialog({
           body: JSON.stringify({
             kind: "INCOME",
             name: trimmedDescription.slice(0, 120),
-            accountId: clientAccountId,
-            categoryId,
+            accountId: form.accountId,
+            categoryId: form.categoryId,
             description: trimmedDescription,
             totalAmount: minor.toString(),
-            paymentTermsDays: daysBetweenIso(entryDate, paymentDueOn),
+            paymentTermsDays: daysBetweenIso(form.entryDate, form.paymentDueOn),
             intervalCount: interval.intervalCount,
             intervalUnit: interval.intervalUnit,
-            firstRunOn: nextOccurrenceIso(entryDate, interval),
+            firstRunOn: nextOccurrenceIso(form.entryDate, interval),
           }),
         });
         if (renewalRes.ok) {
@@ -184,7 +148,7 @@ export function CreateIncomeDialog({
         } else {
           const rdata = (await renewalRes.json().catch(() => ({}))) as ApiError;
           toast.warning(
-            `Income draft created, but the recurrence wasn't set up: ${rdata.error ?? "add it on the Renewals page"}`,
+            `Income draft created, but the recurrence wasn't set up: ${rdata.error ?? "add it later"}`,
           );
         }
       } else {
@@ -203,10 +167,10 @@ export function CreateIncomeDialog({
 
   const submitDisabled =
     submitting ||
-    !clientAccountId ||
-    !categoryId ||
-    !description.trim() ||
-    !amount.trim();
+    !form.accountId ||
+    !form.categoryId ||
+    !form.description.trim() ||
+    !form.amount.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -221,102 +185,19 @@ export function CreateIncomeDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="income-account">Source account</Label>
-                <Select
-                  value={clientAccountId}
-                  onValueChange={(v) => setClientAccountId(v ?? "")}
-                >
-                  <SelectTrigger id="income-account">
-                    <SelectValue placeholder="Pick an account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="income-category">Category</Label>
-                <Select
-                  value={categoryId}
-                  onValueChange={(v) => setCategoryId(v ?? "")}
-                >
-                  <SelectTrigger id="income-category">
-                    <SelectValue placeholder="Pick a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="income-description">Description</Label>
-              <Input
-                id="income-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. May retainer for Acme Corp"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="income-amount">Amount</Label>
-                <NumberInput
-                  id="income-amount"
-                  value={amount}
-                  onValueChange={setAmount}
-                  placeholder="1234.56"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="income-entry-date">Entry date</Label>
-                <Input
-                  id="income-entry-date"
-                  type="date"
-                  value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="income-due-date">Payment due</Label>
-                <Input
-                  id="income-due-date"
-                  type="date"
-                  value={paymentDueOn}
-                  onChange={(e) => setPaymentDueOn(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
+            <EntryFormFields
+              kind="income"
+              idPrefix="income"
+              value={form}
+              onChange={setForm}
+              accounts={accounts}
+              categories={categories}
+              submitting={submitting}
+            />
             <RecurrencePicker
               idPrefix="income"
               value={recurrence}
               onChange={setRecurrence}
-              disabled={submitting}
-            />
-
-            <FeePicker
-              idPrefix="income"
-              value={fee}
-              onChange={setFee}
-              totalMinor={parseAmountMinor(amount)}
-              direction="in"
               disabled={submitting}
             />
           </div>

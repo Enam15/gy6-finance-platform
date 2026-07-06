@@ -14,68 +14,49 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { moneyFromMajor } from "@/lib/money";
-import { RecurrencePicker } from "@/components/recurrence-picker";
+import { EntryFormFields, type EntryOption } from "@/components/entry-form-fields";
 import {
-  DEFAULT_RECURRENCE,
-  daysBetweenIso,
-  nextOccurrenceIso,
-  resolveInterval,
-  type RecurrenceState,
-} from "@/lib/recurrence";
-import { EntryFormFields } from "@/components/entry-form-fields";
-import { blankEntryForm, type EntryFormState } from "@/lib/entry-form";
+  entryToForm,
+  type EntryFormState,
+  type SerializedEntry,
+} from "@/lib/entry-form";
 import { feePayload } from "@/lib/fees";
 
-export interface AccountOption {
-  id: string;
-  name: string;
-}
-export interface CategoryOption {
-  id: string;
-  name: string;
-}
-
-interface CreateExpenseDialogProps {
-  accounts: AccountOption[];
-  categories: CategoryOption[];
+interface EditEntryDialogProps {
+  kind: "income" | "expense";
+  entry: SerializedEntry;
+  accounts: EntryOption[];
+  categories: EntryOption[];
 }
 
 interface ApiError {
   error?: string;
 }
 
-export function CreateExpenseDialog({
+/** Edit a DRAFT income/expense entry. Only rendered for draft rows. */
+export function EditEntryDialog({
+  kind,
+  entry,
   accounts,
   categories,
-}: CreateExpenseDialogProps) {
+}: EditEntryDialogProps) {
   const router = useRouter();
-
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<EntryFormState>(blankEntryForm);
-  const [recurrence, setRecurrence] =
-    useState<RecurrenceState>(DEFAULT_RECURRENCE);
+  const [form, setForm] = useState<EntryFormState>(() => entryToForm(entry));
   const [submitting, setSubmitting] = useState(false);
-
-  function reset() {
-    setForm(blankEntryForm());
-    setRecurrence(DEFAULT_RECURRENCE);
-  }
 
   function onOpenChange(next: boolean) {
     setOpen(next);
-    if (!next) reset();
+    // Re-seed from the entry each time the dialog opens so a cancelled edit
+    // doesn't leak into the next open.
+    if (next) setForm(entryToForm(entry));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedDescription = form.description.trim();
     const trimmedAmount = form.amount.trim();
-    if (
-      !form.accountId ||
-      !form.categoryId ||
-      !trimmedDescription ||
-      !trimmedAmount
-    ) {
+    if (!form.accountId || !form.categoryId || !trimmedDescription || !trimmedAmount) {
       return;
     }
 
@@ -101,61 +82,33 @@ export function CreateExpenseDialog({
       return;
     }
 
+    const path =
+      kind === "income" ? `/api/income/${entry.id}` : `/api/expenses/${entry.id}`;
+    const accountKey =
+      kind === "income" ? "clientAccountId" : "payeeAccountId";
+
     setSubmitting(true);
     try {
-      const res = await fetch("/api/expenses", {
-        method: "POST",
+      const res = await fetch(path, {
+        method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          payeeAccountId: form.accountId,
+          [accountKey]: form.accountId,
           categoryId: form.categoryId,
           description: trimmedDescription,
           totalAmount: minor.toString(),
           entryDate: form.entryDate,
           paymentDueOn: form.paymentDueOn,
-          notes: form.notes.trim() ? form.notes.trim() : undefined,
+          notes: form.notes.trim() ? form.notes.trim() : null,
           ...feeFields,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
       if (!res.ok) {
-        toast.error(data.error ?? "Failed to create expense draft");
+        toast.error(data.error ?? "Failed to save changes");
         return;
       }
-
-      const interval = resolveInterval(recurrence);
-      if (interval) {
-        const renewalRes = await fetch("/api/renewals", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            kind: "EXPENSE",
-            name: trimmedDescription.slice(0, 120),
-            accountId: form.accountId,
-            categoryId: form.categoryId,
-            description: trimmedDescription,
-            totalAmount: minor.toString(),
-            paymentTermsDays: daysBetweenIso(form.entryDate, form.paymentDueOn),
-            intervalCount: interval.intervalCount,
-            intervalUnit: interval.intervalUnit,
-            firstRunOn: nextOccurrenceIso(form.entryDate, interval),
-          }),
-        });
-        if (renewalRes.ok) {
-          toast.success(
-            `Expense draft "${trimmedDescription}" created and set to repeat`,
-          );
-        } else {
-          const rdata = (await renewalRes.json().catch(() => ({}))) as ApiError;
-          toast.warning(
-            `Expense draft created, but the recurrence wasn't set up: ${rdata.error ?? "add it later"}`,
-          );
-        }
-      } else {
-        toast.success(`Expense draft "${trimmedDescription}" created`);
-      }
-
-      reset();
+      toast.success("Draft updated");
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -174,31 +127,32 @@ export function CreateExpenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={<Button>New expense</Button>} />
+      <DialogTrigger
+        render={
+          <Button variant="outline" size="sm">
+            Edit
+          </Button>
+        }
+      />
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Draft an expense entry</DialogTitle>
+            <DialogTitle>Edit {kind} draft</DialogTitle>
             <DialogDescription>
-              Drafts do not touch the ledger until you confirm them.
+              Only draft entries can be edited. Confirmed entries must be
+              reversed to change them.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <EntryFormFields
-              kind="expense"
-              idPrefix="expense"
+              kind={kind}
+              idPrefix={`edit-${kind}-${entry.id}`}
               value={form}
               onChange={setForm}
               accounts={accounts}
               categories={categories}
               submitting={submitting}
-            />
-            <RecurrencePicker
-              idPrefix="expense"
-              value={recurrence}
-              onChange={setRecurrence}
-              disabled={submitting}
             />
           </div>
 
@@ -212,7 +166,7 @@ export function CreateExpenseDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={submitDisabled}>
-              {submitting ? "Creating..." : "Create draft"}
+              {submitting ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </form>

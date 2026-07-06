@@ -267,6 +267,7 @@ model IncomeEntry {
   feeLabel          String?    @map("fee_label")
   feeBps            Int?       @map("fee_bps")
   feeAmount         BigInt?    @map("fee_amount")
+  notes             String?
 
   clientAccount   Account             @relation(fields: [clientAccountId], references: [id])
   category        TransactionCategory @relation(fields: [categoryId], references: [id])
@@ -303,6 +304,7 @@ model ExpenseEntry {
   feeLabel          String?    @map("fee_label")
   feeBps            Int?       @map("fee_bps")
   feeAmount         BigInt?    @map("fee_amount")
+  notes             String?
 
   payeeAccount    Account             @relation(fields: [payeeAccountId], references: [id])
   category        TransactionCategory @relation(fields: [categoryId], references: [id])

@@ -5,59 +5,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { IncomeService } from "@/services/income-service";
 import { TransactionCategoryService } from "@/services/transaction-category-service";
-import { formatMoney, money } from "@/lib/money";
-import { feeMethodLabel, bpsToPercent } from "@/lib/fees";
-import type { EntryStatus } from "@/lib/entry-status";
-import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateIncomeDialog } from "./_components/create-income-dialog";
-import { ConfirmIncomeButton } from "./_components/confirm-button";
-import { FullyPaidButton } from "@/components/fully-paid-button";
-import { ReverseButton } from "@/components/reverse-button";
 import { ExportLinks } from "@/components/export-links";
 import { ListSelectFilter } from "@/app/_components/list-select-filter";
 import { AttachmentService } from "@/services/attachment-service";
-import { AttachmentsDialog } from "@/components/attachments-dialog";
+import { RenewalService } from "@/services/renewal-service";
+import { getActor } from "@/lib/auth";
+import { EntriesTable } from "@/components/entries-table";
+import type { SerializedEntry } from "@/lib/entry-form";
 
 export const dynamic = "force-dynamic";
 
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
-}
-
-function stateBadgeVariant(state: EntryState): BadgeVariant {
-  switch (state) {
-    case "DRAFT":
-      return "outline";
-    case "CONFIRMED":
-      return "default";
-    case "REVERSED":
-      return "destructive";
-  }
-}
-
-function statusBadgeVariant(status: EntryStatus): BadgeVariant {
-  switch (status) {
-    case "NO_ACTION_REQUIRED":
-      return "secondary";
-    case "PAYMENT_APPROACHING":
-      return "outline";
-    case "PAYMENT_NEEDED":
-      return "destructive";
-  }
 }
 
 export default async function IncomePage({
@@ -69,19 +32,23 @@ export default async function IncomePage({
   const accountService = new AccountService();
   const categoryService = new TransactionCategoryService();
 
-  const [
-    entries,
-    accounts,
-    incomeCategories,
-    businessAccounts,
-    attachmentCounts,
-  ] = await Promise.all([
-    incomeService.listEntries(),
-    accountService.listVisible(),
-    categoryService.listByKind("INCOME"),
-    accountService.listBusinessAccounts(),
-    new AttachmentService().countsByIncome(),
-  ]);
+  // Recurring entries are set up from the create dialog and materialise as
+  // drafts here: opening the tab catches up any that have come due (safe /
+  // idempotent - each template is locked and its next run advanced).
+  const actor = await getActor();
+  await new RenewalService().generateDue({
+    actorId: actor?.id ?? null,
+    actorLabel: actor?.label ?? null,
+  });
+
+  const [entries, accounts, incomeCategories, businessAccounts, attachmentCounts] =
+    await Promise.all([
+      incomeService.listEntries(),
+      accountService.listVisible(),
+      categoryService.listByKind("INCOME"),
+      accountService.listBusinessAccounts(),
+      new AttachmentService().countsByIncome(),
+    ]);
 
   const sp = await searchParams;
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
@@ -89,15 +56,43 @@ export default async function IncomePage({
     ? entries.filter((e) => e.categoryId === categoryFilter)
     : entries;
 
-  const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
-  const categoryNameById = new Map(
+  const accountNameById = Object.fromEntries(
+    accounts.map((a) => [a.id, a.name]),
+  );
+  const categoryNameById = Object.fromEntries(
     incomeCategories.map((c) => [c.id, c.name]),
   );
+  const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
+  const categoryOptions = incomeCategories.map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
   const businessAccountOptions = businessAccounts.map((a) => ({
     id: a.id,
     name: a.name,
   }));
 
+  const rows: SerializedEntry[] = visibleEntries.map((entry) => ({
+    id: entry.id,
+    accountId: entry.clientAccountId,
+    categoryId: entry.categoryId,
+    description: entry.description,
+    totalAmount: entry.totalAmount.toString(),
+    amountPaid: entry.amountPaid.toString(),
+    amountDue: entry.amountDue.toString(),
+    entryDate: formatDate(entry.entryDate),
+    paymentDueOn: formatDate(entry.paymentDueOn),
+    state: entry.state,
+    status: entry.status,
+    feeMethod: entry.feeMethod,
+    feeLabel: entry.feeLabel,
+    feeBps: entry.feeBps,
+    feeAmount: entry.feeAmount?.toString() ?? null,
+    notes: entry.notes,
+    createdAt: entry.createdAt.toISOString(),
+  }));
+
+  const attachmentCountsObj = Object.fromEntries(attachmentCounts);
   const canCreate = accounts.length > 0 && incomeCategories.length > 0;
 
   return (
@@ -106,19 +101,16 @@ export default async function IncomePage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Income</h1>
           <p className="text-sm text-muted-foreground">
-            Drafts do not move the ledger; confirming posts double-entry
-            (debit the source account, credit Revenue). Payments are
-            separate postings that reduce amount_due.
+            Drafts do not move the ledger; confirming posts double-entry (money
+            in from the source, recognised as Revenue). Click a row to see
+            notes and details.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {canCreate ? (
             <CreateIncomeDialog
-              accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
-              categories={incomeCategories.map((c) => ({
-                id: c.id,
-                name: c.name,
-              }))}
+              accounts={accountOptions}
+              categories={categoryOptions}
             />
           ) : (
             <span className="max-w-xs text-right text-sm text-muted-foreground">
@@ -134,9 +126,7 @@ export default async function IncomePage({
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle>
-                All income entries ({visibleEntries.length})
-              </CardTitle>
+              <CardTitle>All income entries ({visibleEntries.length})</CardTitle>
               <CardDescription>Newest first.</CardDescription>
             </div>
             {incomeCategories.length > 0 && (
@@ -161,115 +151,16 @@ export default async function IncomePage({
                 : "No income recorded yet."}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Debit (DR)</TableHead>
-                  <TableHead>Credit (CR)</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Fee</TableHead>
-                  <TableHead className="text-right">Due</TableHead>
-                  <TableHead>Entry</TableHead>
-                  <TableHead>Payment due</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
-                      {entry.description}
-                    </TableCell>
-                    <TableCell>
-                      {accountNameById.get(entry.clientAccountId) ?? "Unknown"}
-                    </TableCell>
-                    <TableCell>Revenue</TableCell>
-                    <TableCell>
-                      {categoryNameById.get(entry.categoryId) ?? "Unknown"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(money(entry.totalAmount))}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.feeAmount && entry.feeAmount > 0n ? (
-                        <div className="leading-tight">
-                          <div>{formatMoney(money(entry.feeAmount))}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {feeMethodLabel(entry.feeMethod ?? "")}
-                            {entry.feeBps
-                              ? ` ${bpsToPercent(entry.feeBps)}%`
-                              : ""}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(money(entry.amountDue))}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDate(entry.entryDate)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDate(entry.paymentDueOn)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={stateBadgeVariant(entry.state)}>
-                        {entry.state}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusBadgeVariant(entry.status)}>
-                        {entry.status.replace(/_/g, " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <AttachmentsDialog
-                          kind="income"
-                          entryId={entry.id}
-                          label={entry.description}
-                          count={attachmentCounts.get(entry.id) ?? 0}
-                        />
-                        {entry.state === "DRAFT" && (
-                          <ConfirmIncomeButton
-                            entryId={entry.id}
-                            description={entry.description}
-                          />
-                        )}
-                        {entry.state === "CONFIRMED" &&
-                          entry.amountDue > 0n && (
-                            <FullyPaidButton
-                              kind="income"
-                              entryId={entry.id}
-                              description={entry.description}
-                              amountDueMinor={entry.amountDue.toString()}
-                              businessAccounts={businessAccountOptions}
-                            />
-                          )}
-                        {entry.state === "CONFIRMED" &&
-                          entry.amountDue === 0n && (
-                            <Badge variant="secondary">Fully paid</Badge>
-                          )}
-                        {entry.state === "CONFIRMED" &&
-                          entry.amountPaid === 0n && (
-                            <ReverseButton
-                              apiPath={`/api/income/${entry.id}/reverse`}
-                              what="Income"
-                              description={entry.description}
-                            />
-                          )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <EntriesTable
+              kind="income"
+              rows={rows}
+              accountNameById={accountNameById}
+              categoryNameById={categoryNameById}
+              accounts={accountOptions}
+              categories={categoryOptions}
+              businessAccounts={businessAccountOptions}
+              attachmentCounts={attachmentCountsObj}
+            />
           )}
         </CardContent>
       </Card>

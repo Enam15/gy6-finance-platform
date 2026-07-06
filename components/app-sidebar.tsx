@@ -12,8 +12,6 @@ import {
   LayoutGrid,
   PieChart,
   ReceiptText,
-  RefreshCw,
-  StickyNote,
   Tags,
   Wallet,
   type LucideIcon,
@@ -36,10 +34,8 @@ const navItems: NavItem[] = [
   { label: "Expenses", href: "/expenses", icon: ArrowUpRight },
   { label: "Transfers", href: "/transfers", icon: ArrowLeftRight },
   { label: "Distributions", href: "/distributions", icon: PieChart },
-  { label: "Renewals", href: "/renewals", icon: RefreshCw },
   { label: "Ledger", href: "/ledger", icon: BookText },
   { label: "Invoices", href: "/invoices", icon: ReceiptText },
-  { label: "Notes", href: "/notes", icon: StickyNote },
 ];
 
 export interface SidebarUser {
