@@ -130,6 +130,36 @@ export class DashboardService {
     };
   }
 
+  /**
+   * Monthly income/expense series over an explicit list of month-start dates
+   * (oldest first). Months with no data are padded to 0n, so the chart gets
+   * exactly the requested buckets. Powers the dashboard chart's range picker.
+   */
+  async monthlySeries(months: Date[]): Promise<MonthlyPoint[]> {
+    if (months.length === 0) return [];
+    const start = months[0]!;
+
+    const [incomeRows, expenseRows] = await Promise.all([
+      new IncomeService(this.db).monthlyTotalsSince(start),
+      new ExpenseService(this.db).monthlyTotalsSince(start),
+    ]);
+
+    const incomeByMonth = new Map<string, bigint>();
+    for (const row of incomeRows) incomeByMonth.set(monthKey(row.month), row.total);
+    const expenseByMonth = new Map<string, bigint>();
+    for (const row of expenseRows)
+      expenseByMonth.set(monthKey(row.month), row.total);
+
+    return months.map((m) => {
+      const key = monthKey(m);
+      return {
+        monthStart: m,
+        income: incomeByMonth.get(key) ?? 0n,
+        expense: expenseByMonth.get(key) ?? 0n,
+      };
+    });
+  }
+
   /** Income / expense / net for a specific calendar quarter (q = 1..4). */
   async quarterTotals(year: number, quarter: number): Promise<PeriodTotals> {
     const q = Math.min(4, Math.max(1, Math.trunc(quarter)));

@@ -73,6 +73,44 @@ export function QuarterPicker({
   );
 }
 
+/**
+ * Range picker for the Charts card. Rolling-window presets plus two options
+ * that follow the top Quarter/Year selections, so choosing a quarter or year
+ * up top reflects straight onto the charts.
+ */
+export function ChartRangePicker({
+  range,
+  quarter,
+  quarterYear,
+  year,
+}: {
+  range: string;
+  quarter: number;
+  quarterYear: number;
+  year: number;
+}) {
+  const setParam = useParamSetter();
+  return (
+    <Select
+      value={range}
+      onValueChange={(v) => setParam({ range: v ?? "12m" })}
+    >
+      <SelectTrigger className="w-[190px]" aria-label="Chart range">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="6m">Last 6 months</SelectItem>
+        <SelectItem value="12m">Last 12 months</SelectItem>
+        <SelectItem value="24m">Last 24 months</SelectItem>
+        <SelectItem value="quarter">
+          Q{quarter} {quarterYear}
+        </SelectItem>
+        <SelectItem value="year">Year {year}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** Year picker for the dashboard's year section. */
 export function YearPicker({
   year,

@@ -13,6 +13,7 @@ interface DashboardChartsLazyProps {
   cashMinor: string;
   receivablesMinor: string;
   payablesMinor: string;
+  rangeLabel: string;
 }
 
 // recharts is a large bundle and the charts are below the fold, so load them

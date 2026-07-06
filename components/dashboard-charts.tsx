@@ -44,6 +44,8 @@ interface DashboardChartsProps {
   cashMinor: string;
   receivablesMinor: string;
   payablesMinor: string;
+  /** Human label for the selected range, shown in the caption. */
+  rangeLabel: string;
 }
 
 type ChartKey = "bars" | "lines" | "net" | "position";
@@ -88,6 +90,7 @@ export function DashboardCharts({
   cashMinor,
   receivablesMinor,
   payablesMinor,
+  rangeLabel,
 }: DashboardChartsProps) {
   const [chart, setChart] = useState<ChartKey>("bars");
 
@@ -259,7 +262,7 @@ export function DashboardCharts({
         <p className="text-sm text-muted-foreground">
           {chart === "position"
             ? "Your current financial position."
-            : "Last 12 months, by entry date (UTC)."}
+            : `${rangeLabel}, by entry date (UTC).`}
         </p>
         <Select value={chart} onValueChange={(v) => setChart((v ?? "bars") as ChartKey)}>
           <SelectTrigger className="w-[250px]" aria-label="Chart type">
