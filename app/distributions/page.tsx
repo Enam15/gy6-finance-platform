@@ -66,10 +66,6 @@ export default async function DistributionsPage() {
     businessAccounts.map((a) => [a.id, a.name]),
   );
 
-  const businessOptions = businessAccounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-  }));
   const quarterOptions = buildQuarterOptions(8, at);
   const defaultQuarter = previousQuarterStart(at).toISOString().slice(0, 10);
 
@@ -83,13 +79,13 @@ export default async function DistributionsPage() {
             Distributions
           </h1>
           <p className="text-sm text-muted-foreground">
-            Quarterly profit distribution to partners. Each run posts DR
-            Founder / CR Business for every partner share, atomically.
+            Quarterly split of net profit across partners. Each run posts the
+            founder drawings to the ledger automatically from your Business
+            account.
           </p>
         </div>
         {canRun ? (
           <RunDistributionDialog
-            businessAccounts={businessOptions}
             quarterOptions={quarterOptions}
             defaultQuarterStart={defaultQuarter}
           />

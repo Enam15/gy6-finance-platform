@@ -19,7 +19,9 @@ import { PostingFailure, PostingService } from "@/services/posting-service";
 
 const runSchema = z.object({
   quarterStart: z.coerce.date(),
-  sourceAccountId: z.string().min(1, "Source account is required"),
+  // Optional: when omitted the service auto-picks the primary Business
+  // account. The UI no longer asks the user to choose one.
+  sourceAccountId: z.string().min(1).optional(),
   description: z.string().trim().max(500).optional(),
   effectiveDate: z.coerce.date().optional(),
 });
@@ -159,13 +161,28 @@ export class DistributionService {
     const data = parsed.data;
     const effectiveDate = data.effectiveDate ?? new Date();
 
+    // Resolve the source Business account. When the caller doesn't specify
+    // one (the default now), auto-pick the primary = oldest active Business
+    // account, so the user never has to choose.
+    let sourceAccountId = data.sourceAccountId ?? null;
+    if (!sourceAccountId) {
+      const primary = await this.db.account.findFirst({
+        where: { category: { key: "BUSINESS" }, isActive: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!primary) {
+        return err("No Business account exists to distribute from");
+      }
+      sourceAccountId = primary.id;
+    }
+
     // Source account must exist and sit under BUSINESS.
     const source = await this.db.account.findUnique({
-      where: { id: data.sourceAccountId },
+      where: { id: sourceAccountId },
       include: { category: true },
     });
     if (!source) {
-      return err(`Source account ${data.sourceAccountId} was not found`);
+      return err(`Source account ${sourceAccountId} was not found`);
     }
     if (source.category.key !== "BUSINESS") {
       return err(
@@ -206,7 +223,7 @@ export class DistributionService {
         const distribution = await new DistributionRepository(tx).create({
           quarterStart: preview.quarterStart,
           netAmount: preview.netAmount,
-          sourceAccountId: data.sourceAccountId,
+          sourceAccountId,
           description: data.description ?? null,
           effectiveDate,
           createdBy: options.actorId ?? null,
@@ -221,7 +238,7 @@ export class DistributionService {
           }
           return {
             debitAccountId: founderId,
-            creditAccountId: data.sourceAccountId,
+            creditAccountId: sourceAccountId,
             amount: share.amount,
           };
         });
@@ -259,7 +276,7 @@ export class DistributionService {
             id: distribution.id,
             quarterStart: preview.quarterStart.toISOString().slice(0, 10),
             netAmount: preview.netAmount.toString(),
-            sourceAccountId: data.sourceAccountId,
+            sourceAccountId,
             shares: preview.shares.map((s) => ({
               partnerId: s.partnerId,
               partnerName: s.partnerName,

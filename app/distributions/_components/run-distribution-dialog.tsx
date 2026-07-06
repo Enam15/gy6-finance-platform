@@ -25,11 +25,6 @@ import {
 import { cn } from "@/lib/utils";
 import { formatMoney, money } from "@/lib/money";
 
-interface BusinessAccountOption {
-  id: string;
-  name: string;
-}
-
 interface QuarterOption {
   /** ISO date string (YYYY-MM-DD) for the quarter start. */
   value: string;
@@ -38,7 +33,6 @@ interface QuarterOption {
 }
 
 interface RunDistributionDialogProps {
-  businessAccounts: BusinessAccountOption[];
   quarterOptions: QuarterOption[];
   /** ISO date string of the default-selected quarter (most recent completed). */
   defaultQuarterStart: string;
@@ -79,7 +73,6 @@ function isPreview(data: unknown): data is PreviewResponse {
 }
 
 export function RunDistributionDialog({
-  businessAccounts,
   quarterOptions,
   defaultQuarterStart,
 }: RunDistributionDialogProps) {
@@ -87,16 +80,12 @@ export function RunDistributionDialog({
 
   const [open, setOpen] = useState(false);
   const [quarterStart, setQuarterStart] = useState(defaultQuarterStart);
-  const [sourceAccountId, setSourceAccountId] = useState("");
   const [description, setDescription] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Refresh preview when dialog opens or quarter changes. All state writes
-  // live inside the nested async function (not the effect body) so the
-  // loading/clear sequence is part of the fetch side-effect rather than a
-  // synchronous cascading render.
+  // Refresh preview when dialog opens or quarter changes.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -136,7 +125,6 @@ export function RunDistributionDialog({
 
   function reset() {
     setQuarterStart(defaultQuarterStart);
-    setSourceAccountId("");
     setDescription("");
     setPreview(null);
   }
@@ -148,7 +136,7 @@ export function RunDistributionDialog({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!sourceAccountId || !preview || preview.shares.length === 0) return;
+    if (!preview || preview.shares.length === 0) return;
 
     setSubmitting(true);
     try {
@@ -157,7 +145,6 @@ export function RunDistributionDialog({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           quarterStart,
-          sourceAccountId,
           description: description.trim() ? description.trim() : undefined,
         }),
       });
@@ -177,8 +164,7 @@ export function RunDistributionDialog({
     }
   }
 
-  const canRun =
-    !!preview && preview.shares.length > 0 && !!sourceAccountId;
+  const canRun = !!preview && preview.shares.length > 0;
 
   const netBigInt = preview ? BigInt(preview.netAmount) : 0n;
   const netToneClass =
@@ -194,52 +180,32 @@ export function RunDistributionDialog({
       <DialogContent className="sm:max-w-2xl">
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Run profit distribution</DialogTitle>
+            <DialogTitle>Distribute net profit</DialogTitle>
             <DialogDescription>
-              Posts DR Founder / CR Business for every partner share in one
-              ledger transaction. The preview is live; the actual numbers
-              are recomputed server-side at run time.
+              Splits the quarter&apos;s net profit across partners by their
+              share. The founder drawings post to the ledger automatically
+              from your Business account.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="dist-quarter">Quarter</Label>
-                <Select
-                  value={quarterStart}
-                  onValueChange={(v) => setQuarterStart(v ?? "")}
-                >
-                  <SelectTrigger id="dist-quarter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {quarterOptions.map((q) => (
-                      <SelectItem key={q.value} value={q.value}>
-                        {q.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="dist-source">Business source account</Label>
-                <Select
-                  value={sourceAccountId}
-                  onValueChange={(v) => setSourceAccountId(v ?? "")}
-                >
-                  <SelectTrigger id="dist-source">
-                    <SelectValue placeholder="Pick an account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {businessAccounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dist-quarter">Quarter</Label>
+              <Select
+                value={quarterStart}
+                onValueChange={(v) => setQuarterStart(v ?? "")}
+              >
+                <SelectTrigger id="dist-quarter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {quarterOptions.map((q) => (
+                    <SelectItem key={q.value} value={q.value}>
+                      {q.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="rounded-md border bg-muted/30 p-4">
@@ -263,7 +229,7 @@ export function RunDistributionDialog({
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Net</p>
+                      <p className="text-xs text-muted-foreground">Net profit</p>
                       <p
                         className={cn(
                           "tabular-nums font-medium",
@@ -278,7 +244,7 @@ export function RunDistributionDialog({
                   {preview.shares.length > 0 ? (
                     <div>
                       <p className="mb-2 text-xs text-muted-foreground">
-                        Allocation
+                        Each partner gets
                       </p>
                       <div className="space-y-1">
                         {preview.shares.map((s) => (
@@ -292,9 +258,7 @@ export function RunDistributionDialog({
                                 ({s.ratio}/{s.ratioDenominator})
                               </span>
                             </span>
-                            <span>
-                              {formatMoney(money(BigInt(s.amount)))}
-                            </span>
+                            <span>{formatMoney(money(BigInt(s.amount)))}</span>
                           </div>
                         ))}
                       </div>
@@ -307,7 +271,7 @@ export function RunDistributionDialog({
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Pick a quarter to see the preview.
+                  Pick a quarter to see the split.
                 </p>
               )}
             </div>
