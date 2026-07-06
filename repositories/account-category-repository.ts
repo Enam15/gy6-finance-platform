@@ -1,14 +1,21 @@
 import type {
   AccountCategory,
   AccountCategoryKey,
+  NormalBalance,
+  Prisma,
 } from "@/lib/generated/prisma/client";
 import type { DbClient } from "@/lib/prisma";
 
 /** Fields accepted when creating an account category. */
 export interface CreateAccountCategoryData {
-  key: AccountCategoryKey;
+  /** Null for user-created custom categories. */
+  key?: AccountCategoryKey | null;
   name: string;
   balanceVisible: boolean;
+  /** Required for custom categories (no key to derive it from). */
+  normalBalance?: NormalBalance | null;
+  /** Custom field definitions, stored as JSON. */
+  customFields?: Prisma.InputJsonValue;
   isSystem?: boolean;
 }
 
@@ -39,9 +46,11 @@ export class AccountCategoryRepository {
   create(data: CreateAccountCategoryData): Promise<AccountCategory> {
     return this.db.accountCategory.create({
       data: {
-        key: data.key,
+        key: data.key ?? null,
         name: data.name,
         balanceVisible: data.balanceVisible,
+        normalBalance: data.normalBalance ?? null,
+        customFields: data.customFields ?? undefined,
         isSystem: data.isSystem ?? false,
       },
     });

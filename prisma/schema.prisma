@@ -118,13 +118,21 @@ enum AuditAction {
 /// Subscription balances are hidden; Business, Founder and Client are shown.
 /// The SYSTEM category holds hidden internal accounts and is never user-facing.
 model AccountCategory {
-  id             String             @id @default(uuid(7))
-  key            AccountCategoryKey @unique
+  id             String              @id @default(uuid(7))
+  /// Null for user-created custom categories; the fixed seeded categories
+  /// carry their stable enum key so ledger logic can key off it.
+  key            AccountCategoryKey? @unique
   name           String
-  balanceVisible Boolean            @map("balance_visible")
-  isSystem       Boolean            @default(false) @map("is_system")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  balanceVisible Boolean             @map("balance_visible")
+  /// Set for custom categories (which have no key); the built-in categories
+  /// derive their normal balance from the key instead.
+  normalBalance  NormalBalance?      @map("normal_balance")
+  /// Optional user-defined field definitions: [{ id, label }]. Accounts in
+  /// the category store matching values in Account.customValues.
+  customFields   Json?               @map("custom_fields")
+  isSystem       Boolean             @default(false) @map("is_system")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
 
   accounts Account[]
 
@@ -145,6 +153,8 @@ model Account {
   balance       BigInt            @default(0)
   allowNegative Boolean           @default(false) @map("allow_negative")
   isActive      Boolean           @default(true) @map("is_active")
+  /// Values for the category's custom fields: { [fieldId]: value }.
+  customValues  Json?             @map("custom_values")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 

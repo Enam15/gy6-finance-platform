@@ -17,7 +17,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { formatMoney, money } from "@/lib/money";
+import { parseCustomFields } from "@/lib/account-fields";
 import { CreateAccountDialog } from "./_components/create-account-dialog";
+import { CreateAccountCategoryDialog } from "./_components/create-account-category-dialog";
 
 // Every data page in this app reads live ledger state on every request; we
 // never want a statically prerendered snapshot. Once auth lands, calling
@@ -45,9 +47,16 @@ export default async function AccountsPage() {
             Internal system accounts are hidden.
           </p>
         </div>
-        <CreateAccountDialog
-          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-        />
+        <div className="flex gap-2">
+          <CreateAccountCategoryDialog />
+          <CreateAccountDialog
+            categories={categories.map((c) => ({
+              id: c.id,
+              name: c.name,
+              fields: parseCustomFields(c.customFields),
+            }))}
+          />
+        </div>
       </div>
 
       <Card>

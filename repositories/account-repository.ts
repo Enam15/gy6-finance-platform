@@ -1,6 +1,7 @@
 import type {
   Account,
   NormalBalance,
+  Prisma,
   SystemAccountKey,
 } from "@/lib/generated/prisma/client";
 import type { DbClient } from "@/lib/prisma";
@@ -18,6 +19,8 @@ export interface CreateAccountData {
   description?: string | null;
   allowNegative?: boolean;
   systemKey?: SystemAccountKey | null;
+  /** Values for the category's custom fields, as a { fieldId: value } map. */
+  customValues?: Prisma.InputJsonValue;
 }
 
 /**
@@ -95,6 +98,7 @@ export class AccountRepository {
         description: data.description ?? null,
         allowNegative: data.allowNegative ?? false,
         systemKey: data.systemKey ?? null,
+        customValues: data.customValues ?? undefined,
       },
     });
   }

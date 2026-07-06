@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
+import { customFieldValues } from "@/lib/account-fields";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { AdjustBalanceButton } from "./_components/adjust-balance-button";
@@ -72,6 +73,10 @@ export default async function AccountDetailPage({ params }: PageProps) {
     detailResult.value;
 
   const nameById = new Map(accounts.map((a) => [a.id, a.name]));
+  const customFields = customFieldValues(
+    category.customFields,
+    account.customValues,
+  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
@@ -159,6 +164,27 @@ export default async function AccountDetailPage({ params }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {customFields.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Details</CardTitle>
+            <CardDescription>
+              Custom fields for this {category.name} account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {customFields.map((f) => (
+                <div key={f.label}>
+                  <dt className="text-xs text-muted-foreground">{f.label}</dt>
+                  <dd className="text-sm">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

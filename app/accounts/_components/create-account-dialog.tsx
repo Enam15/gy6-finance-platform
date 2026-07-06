@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -22,10 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { CustomFieldDef } from "@/lib/account-fields";
 
 export interface CategoryOption {
   id: string;
   name: string;
+  fields: CustomFieldDef[];
 }
 
 interface CreateAccountDialogProps {
@@ -41,11 +43,18 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === categoryId),
+    [categories, categoryId],
+  );
 
   function reset() {
     setName("");
     setCategoryId("");
+    setFieldValues({});
   }
 
   function onOpenChange(next: boolean) {
@@ -58,12 +67,23 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
     const trimmed = name.trim();
     if (!trimmed || !categoryId) return;
 
+    // Only send values for the selected category's fields.
+    const customValues: Record<string, string> = {};
+    for (const field of selectedCategory?.fields ?? []) {
+      const v = (fieldValues[field.id] ?? "").trim();
+      if (v) customValues[field.id] = v;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/accounts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: trimmed, categoryId }),
+        body: JSON.stringify({
+          name: trimmed,
+          categoryId,
+          customValues,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
       if (!res.ok) {
@@ -109,7 +129,10 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
               <Label htmlFor="account-category">Category</Label>
               <Select
                 value={categoryId}
-                onValueChange={(value) => setCategoryId(value ?? "")}
+                onValueChange={(value) => {
+                  setCategoryId(value ?? "");
+                  setFieldValues({});
+                }}
               >
                 <SelectTrigger id="account-category">
                   <SelectValue placeholder="Pick a category" />
@@ -123,6 +146,25 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedCategory?.fields.map((field) => (
+              <div key={field.id} className="grid gap-2">
+                <Label htmlFor={`account-field-${field.id}`}>
+                  {field.label}
+                </Label>
+                <Input
+                  id={`account-field-${field.id}`}
+                  value={fieldValues[field.id] ?? ""}
+                  onChange={(e) =>
+                    setFieldValues((prev) => ({
+                      ...prev,
+                      [field.id]: e.target.value,
+                    }))
+                  }
+                  placeholder={`Optional`}
+                />
+              </div>
+            ))}
           </div>
 
           <DialogFooter>

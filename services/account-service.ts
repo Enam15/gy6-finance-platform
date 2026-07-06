@@ -1,13 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type {
   Account,
   AccountCategory,
-  AccountCategoryKey,
   NormalBalance,
   PrismaClient,
 } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ok, err, type Result } from "@/lib/result";
+import { parseCustomFields } from "@/lib/account-fields";
 import { AccountRepository } from "@/repositories/account-repository";
 import { AccountCategoryRepository } from "@/repositories/account-category-repository";
 import { AuditLogRepository } from "@/repositories/audit-log-repository";
@@ -19,9 +20,28 @@ const createAccountSchema = z.object({
   name: z.string().trim().min(1, "Account name is required").max(120),
   description: z.string().trim().max(500).optional(),
   allowNegative: z.boolean().optional(),
+  /** Values for the category's custom fields, keyed by field id. */
+  customValues: z.record(z.string(), z.string()).optional(),
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+const createCategorySchema = z.object({
+  name: z.string().trim().min(1, "A category name is required").max(60),
+  /**
+   * How accounts in this category behave on the ledger. Framed for users as
+   * "money you have" (DEBIT, asset-like) vs "money you owe" (CREDIT).
+   */
+  normalBalance: z.enum(["DEBIT", "CREDIT"]),
+  balanceVisible: z.boolean().optional(),
+  /** Custom field labels to attach to accounts in this category. */
+  fields: z
+    .array(z.object({ label: z.string().trim().min(1).max(60) }))
+    .max(20)
+    .optional(),
+});
+
+export type CreateAccountCategoryInput = z.infer<typeof createCategorySchema>;
 
 /** Bundled view of an account for the detail page. */
 export interface AccountDetail {
@@ -34,25 +54,30 @@ export interface AccountDetail {
 }
 
 /**
- * Derive an account's normal balance from its category. In the movement-based
- * ledger: Business, Client and Founder accounts are debit-normal (cash,
- * client receivables and founder distributions all grow on debit); Employee
- * and Subscription accounts are credit-normal (payables grow on credit).
+ * Derive an account's normal balance from its category. Built-in categories
+ * key off their stable enum: Business, Client and Founder are debit-normal
+ * (cash, client receivables and founder distributions all grow on debit);
+ * Employee and Subscription are credit-normal (payables grow on credit).
+ * Custom categories (no key) carry their own normalBalance instead.
  */
-function normalBalanceForCategory(key: AccountCategoryKey): NormalBalance {
-  switch (key) {
-    case "BUSINESS":
-    case "CLIENT":
-    case "FOUNDER":
-      return "DEBIT";
-    case "EMPLOYEE":
-    case "SUBSCRIPTION":
-      return "CREDIT";
-    case "SYSTEM":
-      throw new Error(
-        "SYSTEM category accounts are seeded, not created through the service",
-      );
+function normalBalanceForCategory(category: AccountCategory): NormalBalance {
+  if (category.key) {
+    switch (category.key) {
+      case "BUSINESS":
+      case "CLIENT":
+      case "FOUNDER":
+        return "DEBIT";
+      case "EMPLOYEE":
+      case "SUBSCRIPTION":
+        return "CREDIT";
+      case "SYSTEM":
+        throw new Error(
+          "SYSTEM category accounts are seeded, not created through the service",
+        );
+    }
   }
+  if (category.normalBalance) return category.normalBalance;
+  throw new Error(`Category "${category.name}" is missing a normal balance`);
 }
 
 /**
@@ -144,7 +169,18 @@ export class AccountService {
       return err("Accounts cannot be created under the system category");
     }
 
-    const normalBalance = normalBalanceForCategory(category.key);
+    const normalBalance = normalBalanceForCategory(category);
+
+    // Keep only values for fields this category actually defines.
+    const fieldIds = new Set(
+      parseCustomFields(category.customFields).map((f) => f.id),
+    );
+    const customValues: Record<string, string> = {};
+    for (const [fieldId, value] of Object.entries(data.customValues ?? {})) {
+      if (fieldIds.has(fieldId) && value.trim()) {
+        customValues[fieldId] = value.trim();
+      }
+    }
 
     const account = await this.db.$transaction(async (tx) => {
       const created = await new AccountRepository(tx).create({
@@ -153,6 +189,8 @@ export class AccountService {
         normalBalance,
         description: data.description ?? null,
         allowNegative: data.allowNegative ?? false,
+        customValues:
+          Object.keys(customValues).length > 0 ? customValues : undefined,
       });
       await new AuditLogRepository(tx).record({
         action: "CREATE",
@@ -172,5 +210,54 @@ export class AccountService {
     });
 
     return ok(account);
+  }
+
+  /**
+   * Create a user-defined account category with an explicit normal balance
+   * and optional custom fields. These sit alongside the seeded built-in
+   * categories; accounts created under them behave normally on the ledger.
+   */
+  async createCategory(
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<AccountCategory>> {
+    const parsed = createCategorySchema.safeParse(input);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((i) => i.message).join("; "));
+    }
+    const data = parsed.data;
+
+    const customFields = (data.fields ?? []).map((f) => ({
+      id: randomUUID(),
+      label: f.label,
+    }));
+
+    const category = await this.db.$transaction(async (tx) => {
+      const created = await new AccountCategoryRepository(tx).create({
+        key: null,
+        name: data.name,
+        balanceVisible: data.balanceVisible ?? true,
+        normalBalance: data.normalBalance,
+        customFields,
+        isSystem: false,
+      });
+      await new AuditLogRepository(tx).record({
+        action: "CREATE",
+        entityType: "AccountCategory",
+        entityId: created.id,
+        summary: `Account category "${created.name}" created`,
+        after: {
+          id: created.id,
+          name: created.name,
+          normalBalance: created.normalBalance,
+          fields: customFields.map((f) => f.label),
+        },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return created;
+    });
+
+    return ok(category);
   }
 }
