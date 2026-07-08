@@ -56,6 +56,7 @@ function Field({
   type,
   numeric,
   integer,
+  tel,
 }: {
   id: string;
   label: string;
@@ -66,18 +67,21 @@ function Field({
   /** Restrict input to digits (and a decimal point unless `integer`). */
   numeric?: boolean;
   integer?: boolean;
+  /** Phone mode: digits plus `+ - ( ) space`, no letters. */
+  tel?: boolean;
 }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id} className="text-xs">
         {label}
       </Label>
-      {numeric ? (
+      {numeric || tel ? (
         <NumberInput
           id={id}
           value={value}
           onValueChange={onChange}
           decimal={!integer}
+          tel={tel}
           placeholder={placeholder}
         />
       ) : (
@@ -328,6 +332,7 @@ export function InvoiceEditor({
                 label="Phone"
                 value={form.billToPhone}
                 onChange={(v) => set("billToPhone", v)}
+                tel
               />
             </CardContent>
           </Card>
@@ -350,7 +355,7 @@ export function InvoiceEditor({
               </p>
               <Field id="rc-name" label="Recipient name" value={form.recipientName} onChange={(v) => set("recipientName", v)} />
               <Field id="rc-bin" label="Recipient BIN" value={form.recipientBin} onChange={(v) => set("recipientBin", v)} />
-              <Field id="rc-phone" label="Phone" value={form.recipientPhone} onChange={(v) => set("recipientPhone", v)} />
+              <Field id="rc-phone" label="Phone" value={form.recipientPhone} onChange={(v) => set("recipientPhone", v)} tel />
               <Field id="rc-email" label="Email" value={form.recipientEmail} onChange={(v) => set("recipientEmail", v)} />
               <div className="sm:col-span-2">
                 <Field id="rc-addr" label="Address" value={form.recipientAddress} onChange={(v) => set("recipientAddress", v)} />
@@ -492,7 +497,7 @@ export function InvoiceEditor({
                   <Field id="pm-acc-type" label="Account type" value={form.payAccountType} onChange={(v) => set("payAccountType", v)} />
                   <Field id="pm-acc-num" label="Account number" value={form.payAccountNumber} onChange={(v) => set("payAccountNumber", v)} />
                   <Field id="pm-branch" label="Branch name" value={form.payBranch} onChange={(v) => set("payBranch", v)} />
-                  <Field id="pm-routing" label="Routing number" value={form.payRouting} onChange={(v) => set("payRouting", v)} />
+                  <Field id="pm-routing" label="Routing number" value={form.payRouting} onChange={(v) => set("payRouting", v)} numeric integer />
                   <Field id="pm-swift" label="Swift code" value={form.paySwift} onChange={(v) => set("paySwift", v)} />
                   <Field id="pm-bankaddr" label="Bank address" value={form.payBankAddress} onChange={(v) => set("payBankAddress", v)} />
                 </>
@@ -530,10 +535,10 @@ export function InvoiceEditor({
               </div>
               <Field id="sg-name" label="Signatory name" value={form.signatoryName} onChange={(v) => set("signatoryName", v)} />
               <Field id="sg-title" label="Signatory title" value={form.signatoryTitle} onChange={(v) => set("signatoryTitle", v)} />
-              <Field id="sg-phone" label="Signatory phone" value={form.signatoryPhone} onChange={(v) => set("signatoryPhone", v)} />
+              <Field id="sg-phone" label="Signatory phone" value={form.signatoryPhone} onChange={(v) => set("signatoryPhone", v)} tel />
               <Field id="sg-email" label="Signatory email" value={form.signatoryEmail} onChange={(v) => set("signatoryEmail", v)} />
               <Field id="is-email" label="Issuer email" value={form.issuerEmail} onChange={(v) => set("issuerEmail", v)} />
-              <Field id="is-phone" label="Issuer phone" value={form.issuerPhone} onChange={(v) => set("issuerPhone", v)} />
+              <Field id="is-phone" label="Issuer phone" value={form.issuerPhone} onChange={(v) => set("issuerPhone", v)} tel />
               <div className="sm:col-span-2">
                 <Field id="is-address" label="Issuer address" value={form.issuerAddress} onChange={(v) => set("issuerAddress", v)} />
               </div>

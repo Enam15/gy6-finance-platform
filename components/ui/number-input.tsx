@@ -7,13 +7,24 @@ interface NumberInputProps
   extends Omit<ComponentProps<typeof Input>, "onChange" | "value" | "type"> {
   value: string;
   onValueChange: (value: string) => void;
-  /** Allow a decimal point (default true). */
+  /** Allow a decimal point (default true). Ignored when `tel` is set. */
   decimal?: boolean;
-  /** Allow a leading minus (default false). */
+  /** Allow a leading minus (default false). Ignored when `tel` is set. */
   allowNegative?: boolean;
+  /**
+   * Phone mode: allow digits plus the usual phone punctuation
+   * (`+ - ( ) space`) but block letters. Use for phone/fax numbers.
+   */
+  tel?: boolean;
 }
 
-function sanitize(raw: string, decimal: boolean, allowNegative: boolean): string {
+function sanitize(
+  raw: string,
+  { decimal, allowNegative, tel }: Pick<NumberInputProps, "decimal" | "allowNegative" | "tel">,
+): string {
+  // Phone numbers: keep digits and phone punctuation only.
+  if (tel) return raw.replace(/[^\d+\-() ]/g, "");
+
   const negative = allowNegative && raw.trimStart().startsWith("-");
   let s = raw.replace(/[^\d.]/g, "");
   if (!decimal) {
@@ -33,16 +44,17 @@ export function NumberInput({
   onValueChange,
   decimal = true,
   allowNegative = false,
+  tel = false,
   ...props
 }: NumberInputProps) {
   return (
     <Input
       {...props}
       type="text"
-      inputMode={decimal ? "decimal" : "numeric"}
+      inputMode={tel ? "tel" : decimal ? "decimal" : "numeric"}
       value={value}
       onChange={(e) =>
-        onValueChange(sanitize(e.target.value, decimal, allowNegative))
+        onValueChange(sanitize(e.target.value, { decimal, allowNegative, tel }))
       }
     />
   );
