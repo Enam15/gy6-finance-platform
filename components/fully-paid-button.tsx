@@ -66,6 +66,9 @@ export function FullyPaidButton({
   const isIncome = kind === "income";
   const soleAccountId =
     businessAccounts.length === 1 ? (businessAccounts[0]?.id ?? "") : "";
+  const accountItems = Object.fromEntries(
+    businessAccounts.map((a) => [a.id, a.name]),
+  );
 
   const [open, setOpen] = useState(false);
   const [businessAccountId, setBusinessAccountId] = useState(soleAccountId);
@@ -136,6 +139,7 @@ export function FullyPaidButton({
           <div className="grid gap-2">
             <Label htmlFor={`fp-${entryId}-account`}>Business account</Label>
             <Select
+              items={accountItems}
               value={businessAccountId}
               onValueChange={(v) => setBusinessAccountId(v ?? "")}
             >

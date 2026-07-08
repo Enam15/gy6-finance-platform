@@ -124,6 +124,10 @@ export function CreateAccountCategoryDialog() {
             <div className="grid gap-2">
               <Label htmlFor="cat-kind">These accounts hold</Label>
               <Select
+                items={{
+                  DEBIT: "Money you have (cash, receivables)",
+                  CREDIT: "Money you owe (payables, loans)",
+                }}
                 value={kind}
                 onValueChange={(v) => setKind((v as Kind) ?? "DEBIT")}
               >

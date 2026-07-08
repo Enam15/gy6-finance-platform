@@ -34,11 +34,18 @@ export function RecurrencePicker({
   onChange,
   disabled,
 }: RecurrencePickerProps) {
+  const repeatItems = Object.fromEntries(
+    REPEAT_OPTIONS.map((o) => [o.value, o.label]),
+  );
+  const unitItems = Object.fromEntries(
+    UNIT_OPTIONS.map((o) => [o.value, o.label]),
+  );
   return (
     <div className="grid gap-3">
       <div className="grid gap-2">
         <Label htmlFor={`${idPrefix}-repeat`}>Repeat</Label>
         <Select
+          items={repeatItems}
           value={value.repeat}
           onValueChange={(v) =>
             onChange({ ...value, repeat: (v as RepeatChoice) ?? "none" })
@@ -74,6 +81,7 @@ export function RecurrencePicker({
           <div className="grid gap-2">
             <Label htmlFor={`${idPrefix}-unit`}>Unit</Label>
             <Select
+              items={unitItems}
               value={value.customUnit}
               onValueChange={(v) =>
                 onChange({

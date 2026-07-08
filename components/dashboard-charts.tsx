@@ -264,7 +264,16 @@ export function DashboardCharts({
             ? "Your current financial position."
             : `${rangeLabel}, by entry date (UTC).`}
         </p>
-        <Select value={chart} onValueChange={(v) => setChart((v ?? "bars") as ChartKey)}>
+        <Select
+          items={{
+            bars: "Income vs Expense (bars)",
+            lines: "Income vs Expense (trend)",
+            net: "Net profit (monthly)",
+            position: "Cash / Receivables / Payables",
+          }}
+          value={chart}
+          onValueChange={(v) => setChart((v ?? "bars") as ChartKey)}
+        >
           <SelectTrigger className="w-[250px]" aria-label="Chart type">
             <SelectValue />
           </SelectTrigger>

@@ -165,6 +165,9 @@ export function RunDistributionDialog({
   }
 
   const canRun = !!preview && preview.shares.length > 0;
+  const quarterItems = Object.fromEntries(
+    quarterOptions.map((q) => [q.value, q.label]),
+  );
 
   const netBigInt = preview ? BigInt(preview.netAmount) : 0n;
   const netToneClass =
@@ -192,6 +195,7 @@ export function RunDistributionDialog({
             <div className="grid gap-2">
               <Label htmlFor="dist-quarter">Quarter</Label>
               <Select
+                items={quarterItems}
                 value={quarterStart}
                 onValueChange={(v) => setQuarterStart(v ?? "")}
               >

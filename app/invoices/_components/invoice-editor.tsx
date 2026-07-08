@@ -110,6 +110,15 @@ export function InvoiceEditor({
   const doc = useMemo(() => formToDocument(form), [form]);
   const appendixData = useMemo(() => formToAppendix(form), [form]);
 
+  // value -> label maps so each Select's trigger shows the label (not the raw
+  // code) for the invoice's current values, including on edit.
+  const currencyItems = Object.fromEntries(
+    CURRENCIES.map((c) => [c.code, c.label]),
+  );
+  const signatoryItems = Object.fromEntries(
+    SIGNATORY_PRESETS.map((p) => [p.key, p.label]),
+  );
+
   function set<K extends keyof InvoiceForm>(key: K, value: InvoiceForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -231,6 +240,7 @@ export function InvoiceEditor({
                   Status
                 </Label>
                 <Select
+                  items={{ DRAFT: "Draft", SENT: "Sent", PAID: "Paid" }}
                   value={form.status}
                   onValueChange={(v) =>
                     set("status", (v as InvoiceStatusValue) ?? "DRAFT")
@@ -251,6 +261,7 @@ export function InvoiceEditor({
                   Currency
                 </Label>
                 <Select
+                  items={currencyItems}
                   value={form.currency}
                   onValueChange={(v) => set("currency", v ?? "BDT")}
                 >
@@ -396,6 +407,7 @@ export function InvoiceEditor({
                   Show on invoice
                 </Label>
                 <Select
+                  items={{ BANK: "Bank details", LINK: "Payment link" }}
                   value={form.paymentType}
                   onValueChange={(v) => set("paymentType", v ?? "BANK")}
                 >
@@ -454,6 +466,7 @@ export function InvoiceEditor({
                   Signatory (sets the signature)
                 </Label>
                 <Select
+                  items={signatoryItems}
                   value={form.signatureKey}
                   onValueChange={(v) =>
                     applySignatory(v ?? DEFAULT_SIGNATURE_KEY)

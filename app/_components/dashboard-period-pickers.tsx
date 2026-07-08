@@ -37,9 +37,12 @@ export function QuarterPicker({
   years: number[];
 }) {
   const setParam = useParamSetter();
+  const quarterItems = Object.fromEntries(QUARTERS.map((n) => [String(n), `Q${n}`]));
+  const yearItems = Object.fromEntries(years.map((y) => [String(y), String(y)]));
   return (
     <div className="flex gap-2">
       <Select
+        items={quarterItems}
         value={String(quarter)}
         onValueChange={(v) => setParam({ q: v ?? String(quarter) })}
       >
@@ -55,6 +58,7 @@ export function QuarterPicker({
         </SelectContent>
       </Select>
       <Select
+        items={yearItems}
         value={String(year)}
         onValueChange={(v) => setParam({ qy: v ?? String(year) })}
       >
@@ -90,8 +94,16 @@ export function ChartRangePicker({
   year: number;
 }) {
   const setParam = useParamSetter();
+  const rangeItems: Record<string, string> = {
+    "6m": "Last 6 months",
+    "12m": "Last 12 months",
+    "24m": "Last 24 months",
+    quarter: `Q${quarter} ${quarterYear}`,
+    year: `Year ${year}`,
+  };
   return (
     <Select
+      items={rangeItems}
       value={range}
       onValueChange={(v) => setParam({ range: v ?? "12m" })}
     >
@@ -120,8 +132,10 @@ export function YearPicker({
   years: number[];
 }) {
   const setParam = useParamSetter();
+  const yearItems = Object.fromEntries(years.map((y) => [String(y), String(y)]));
   return (
     <Select
+      items={yearItems}
       value={String(year)}
       onValueChange={(v) => setParam({ y: v ?? String(year) })}
     >

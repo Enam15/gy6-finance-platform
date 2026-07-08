@@ -152,6 +152,11 @@ export function CreateTransferDialog({
     fromAccountId === toAccountId ||
     !amount.trim();
 
+  // value -> label map so the trigger shows the account name, not its id.
+  const accountItems = Object.fromEntries(
+    businessAccounts.map((a) => [a.id, a.name]),
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={<Button>New transfer</Button>} />
@@ -170,6 +175,7 @@ export function CreateTransferDialog({
               <div className="grid gap-2">
                 <Label htmlFor="transfer-from">From</Label>
                 <Select
+                  items={accountItems}
                   value={fromAccountId}
                   onValueChange={(v) => setFromAccountId(v ?? "")}
                 >
@@ -188,6 +194,7 @@ export function CreateTransferDialog({
               <div className="grid gap-2">
                 <Label htmlFor="transfer-to">To</Label>
                 <Select
+                  items={accountItems}
                   value={toAccountId}
                   onValueChange={(v) => setToAccountId(v ?? "")}
                 >

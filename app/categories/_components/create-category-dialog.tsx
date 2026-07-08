@@ -101,10 +101,9 @@ export function CreateCategoryDialog() {
             <div className="grid gap-2">
               <Label htmlFor="category-kind">Type</Label>
               <Select
+                items={{ INCOME: "Income", EXPENSE: "Expense" }}
                 value={kind}
-                onValueChange={(value) =>
-                  setKind((value ?? "") as Kind)
-                }
+                onValueChange={(value) => setKind((value ?? "") as Kind)}
               >
                 <SelectTrigger id="category-kind">
                   <SelectValue placeholder="Income or expense" />

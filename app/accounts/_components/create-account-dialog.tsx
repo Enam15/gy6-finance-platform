@@ -50,6 +50,9 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
     () => categories.find((c) => c.id === categoryId),
     [categories, categoryId],
   );
+  const categoryItems = Object.fromEntries(
+    categories.map((c) => [c.id, c.name]),
+  );
 
   function reset() {
     setName("");
@@ -128,6 +131,7 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
             <div className="grid gap-2">
               <Label htmlFor="account-category">Category</Label>
               <Select
+                items={categoryItems}
                 value={categoryId}
                 onValueChange={(value) => {
                   setCategoryId(value ?? "");
