@@ -15,6 +15,7 @@ import { AttachmentService } from "@/services/attachment-service";
 import { RenewalService } from "@/services/renewal-service";
 import { getActor } from "@/lib/auth";
 import { EntriesTable } from "@/components/entries-table";
+import { RecurringEntries } from "@/components/recurring-entries";
 import type { SerializedEntry } from "@/lib/entry-form";
 
 export const dynamic = "force-dynamic";
@@ -35,20 +36,28 @@ export default async function ExpensesPage({
   // Recurring entries are set up from the create dialog and materialise as
   // drafts here: opening the tab catches up any that have come due (safe /
   // idempotent - each template is locked and its next run advanced).
+  const renewalService = new RenewalService();
   const actor = await getActor();
-  await new RenewalService().generateDue({
+  await renewalService.generateDue({
     actorId: actor?.id ?? null,
     actorLabel: actor?.label ?? null,
   });
 
-  const [entries, accounts, expenseCategories, businessAccounts, attachmentCounts] =
-    await Promise.all([
-      expenseService.listEntries(),
-      accountService.listVisible(),
-      categoryService.listByKind("EXPENSE"),
-      accountService.listBusinessAccounts(),
-      new AttachmentService().countsByExpense(),
-    ]);
+  const [
+    entries,
+    accounts,
+    expenseCategories,
+    businessAccounts,
+    attachmentCounts,
+    templates,
+  ] = await Promise.all([
+    expenseService.listEntries(),
+    accountService.listVisible(),
+    categoryService.listByKind("EXPENSE"),
+    accountService.listBusinessAccounts(),
+    new AttachmentService().countsByExpense(),
+    renewalService.listTemplates(),
+  ]);
 
   const sp = await searchParams;
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
@@ -94,6 +103,20 @@ export default async function ExpensesPage({
 
   const attachmentCountsObj = Object.fromEntries(attachmentCounts);
   const canCreate = accounts.length > 0 && expenseCategories.length > 0;
+
+  const recurring = templates
+    .filter((t) => t.kind === "EXPENSE")
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      accountName: accountNameById[t.accountId] ?? "Unknown",
+      categoryName: categoryNameById[t.categoryId] ?? "Unknown",
+      totalAmountMinor: t.totalAmount.toString(),
+      intervalCount: t.intervalCount,
+      intervalUnit: t.intervalUnit,
+      nextRunIso: t.nextRunOn.toISOString(),
+      isActive: t.isActive,
+    }));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
@@ -166,6 +189,8 @@ export default async function ExpensesPage({
           )}
         </CardContent>
       </Card>
+
+      <RecurringEntries kind="expense" entries={recurring} />
     </div>
   );
 }

@@ -19,6 +19,12 @@ import {
   type FeeState,
 } from "@/lib/fees";
 
+/** value -> label map so the trigger shows the right text for a preset mode. */
+const FEE_MODE_ITEMS: Record<string, string> = {
+  PERCENT: "Percentage",
+  FIXED: "Fixed fee",
+};
+
 interface FeePickerProps {
   idPrefix: string;
   value: FeeState;
@@ -71,6 +77,7 @@ export function FeePicker({
             <div className="grid gap-2">
               <Label htmlFor={`${idPrefix}-fee-method`}>Charged via</Label>
               <Select
+                items={FEE_METHOD_OPTIONS}
                 value={value.method}
                 onValueChange={(v) =>
                   onChange({ ...value, method: (v as FeeMethodName) ?? "BANK" })
@@ -92,6 +99,7 @@ export function FeePicker({
             <div className="grid gap-2">
               <Label htmlFor={`${idPrefix}-fee-mode`}>Fee type</Label>
               <Select
+                items={FEE_MODE_ITEMS}
                 value={value.mode}
                 onValueChange={(v) =>
                   onChange({ ...value, mode: (v as FeeMode) ?? "PERCENT" })

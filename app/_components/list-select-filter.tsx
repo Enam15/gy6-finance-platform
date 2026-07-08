@@ -46,10 +46,16 @@ export function ListSelectFilter({
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  // value -> label map so an active filter (value from the URL) shows its
+  // label, not the raw id, before the popup has ever opened.
+  const items: Record<string, string> = { all: allLabel };
+  for (const o of options) items[o.value] = o.label;
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <Select
+        items={items}
         value={value || "all"}
         onValueChange={(v) => setParam(v ?? "all")}
       >

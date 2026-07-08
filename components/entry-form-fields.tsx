@@ -48,12 +48,21 @@ export function EntryFormFields({
     onChange({ ...value, [key]: v });
   }
 
+  // Base UI needs a value->label map to render the trigger label for a value
+  // that was set programmatically (e.g. the edit dialog pre-fills these);
+  // without it the trigger falls back to showing the raw id.
+  const accountItems: Record<string, string> = {};
+  for (const a of accounts) accountItems[a.id] = a.name;
+  const categoryItems: Record<string, string> = {};
+  for (const c of categories) categoryItems[c.id] = c.name;
+
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
           <Label htmlFor={`${idPrefix}-account`}>{accountLabel}</Label>
           <Select
+            items={accountItems}
             value={value.accountId}
             onValueChange={(v) => set("accountId", v ?? "")}
           >
@@ -72,6 +81,7 @@ export function EntryFormFields({
         <div className="grid gap-2">
           <Label htmlFor={`${idPrefix}-category`}>Category</Label>
           <Select
+            items={categoryItems}
             value={value.categoryId}
             onValueChange={(v) => set("categoryId", v ?? "")}
           >
