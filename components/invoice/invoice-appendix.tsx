@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
+import { INVOICE_WIDTH, INVOICE_HEIGHT } from "@/components/invoice/invoice-document";
 
 /**
- * Optional formal-voucher detail below the branded invoice. Renders nothing
- * unless a recipient/payee/contract field is filled, so a normal invoice is
- * completely unchanged. Uses fixed light colours so it prints cleanly in any
- * theme.
+ * Optional formal-voucher detail for formal clients. Rendered as a second
+ * page in the SAME visual language as the branded invoice (cream paper, ink
+ * serif type) so it reads as a continuation of the same document rather than
+ * a foreign table sheet. Renders nothing unless a recipient/payee/contract
+ * field is filled, so a normal invoice is completely unchanged.
  */
 export interface InvoiceAppendixData {
   recipientName?: string | null;
@@ -36,54 +38,61 @@ export interface InvoiceAppendixData {
 
 type Row = [string, string | null | undefined];
 
+const SERIF =
+  "var(--font-invoice-serif),'Source Serif 4','Source Serif Pro',Georgia,serif";
+const DISPLAY = "'Antilag',var(--font-invoice-serif),Georgia,serif";
+const PIXEL = "'OffBit','Source Code Pro','Courier New',monospace";
+const INK = "#0F161A";
+const INK80 = "rgba(15,22,26,0.80)";
+const INK60 = "rgba(15,22,26,0.60)";
+const CREAM = "#EEE6D0";
+
 function filled(v: string | null | undefined): boolean {
   return typeof v === "string" && v.trim() !== "";
 }
 
-const tableStyle: CSSProperties = {
-  border: "1px solid #D1D5DB",
-  borderRadius: 6,
-  overflow: "hidden",
-  breakInside: "avoid",
-};
-const headStyle: CSSProperties = {
-  background: "#E5E7EB",
-  padding: "8px 12px",
-  fontWeight: 700,
-  fontSize: 13,
-  color: "#111827",
-};
-const labelCell: CSSProperties = {
-  padding: "7px 12px",
-  fontWeight: 600,
-  color: "#111827",
-  width: "42%",
-  verticalAlign: "top",
-};
-const valueCell: CSSProperties = {
-  padding: "7px 12px",
-  color: "#374151",
-  verticalAlign: "top",
-};
+const RULE: CSSProperties = { height: 0, borderTop: `1px solid ${INK}`, width: "100%" };
 
-function DetailTable({ title, rows }: { title: string; rows: Row[] }) {
+/** A two-tone "Label: value" line, matching the invoice's field styling. */
+function Line({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!filled(value)) return null;
+  return (
+    <div
+      style={{
+        color: INK60,
+        fontSize: 10.5,
+        fontFamily: SERIF,
+        lineHeight: "19px",
+      }}
+    >
+      <span style={{ fontWeight: 600 }}>{label}: </span>
+      <span style={{ fontWeight: 400 }}>{value}</span>
+    </div>
+  );
+}
+
+/** A titled group of fields; renders nothing when every field is empty. */
+function Group({ title, rows }: { title: string; rows: Row[] }) {
   const visible = rows.filter(([, v]) => filled(v));
   if (visible.length === 0) return null;
   return (
-    <div style={tableStyle}>
-      <div style={headStyle}>{title}</div>
-      <table
-        style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}
+    <div style={{ breakInside: "avoid", marginBottom: 4 }}>
+      <div
+        style={{
+          color: INK,
+          fontSize: 10,
+          fontWeight: 700,
+          fontFamily: SERIF,
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+          marginBottom: 7,
+        }}
       >
-        <tbody>
-          {visible.map(([label, value], i) => (
-            <tr key={i} style={{ borderTop: "1px solid #E5E7EB" }}>
-              <td style={labelCell}>{label}</td>
-              <td style={valueCell}>{value}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {title}
+      </div>
+      {visible.map(([label, value], i) => (
+        <Line key={i} label={label} value={value} />
+      ))}
     </div>
   );
 }
@@ -152,35 +161,51 @@ export function InvoiceAppendix({ data }: { data: InvoiceAppendixData }) {
     <div
       className="invoice-appendix"
       style={{
-        maxWidth: 900,
-        margin: "0 auto",
-        fontFamily:
-          "var(--font-invoice-serif),'Source Serif 4',Georgia,serif",
-        color: "#111827",
+        width: INVOICE_WIDTH,
+        minHeight: INVOICE_HEIGHT,
+        boxSizing: "border-box",
+        background: CREAM,
+        color: INK,
+        fontFamily: SERIF,
+        padding: "44px 40px",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <h2
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          margin: "0 0 12px",
-          color: "#111827",
-        }}
-      >
-        Formal details
-      </h2>
+      {/* Header echoing the invoice's #NN + display title */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        {filled(data.invoiceNumber) ? (
+          <span
+            style={{
+              fontFamily: PIXEL,
+              fontSize: 24,
+              fontWeight: 700,
+              color: INK80,
+              letterSpacing: 1,
+            }}
+          >
+            #{data.invoiceNumber}
+          </span>
+        ) : null}
+        <span style={{ fontFamily: DISPLAY, fontSize: 44, color: INK }}>
+          Formal Details
+        </span>
+      </div>
+      <div style={{ ...RULE, marginTop: 18, marginBottom: 26 }} />
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: 16,
+          gridTemplateColumns: "1fr 1fr",
+          columnGap: 40,
+          rowGap: 28,
           alignItems: "start",
         }}
       >
-        <DetailTable title="Recipient Information" rows={recipient} />
-        <DetailTable title="Payee Bank Information" rows={bank} />
-        <DetailTable title="Payee Information" rows={payee} />
-        <DetailTable title="Project &amp; Invoice Information" rows={project} />
+        <Group title="Recipient Information" rows={recipient} />
+        <Group title="Payee Information" rows={payee} />
+        <Group title="Payee Bank Information" rows={bank} />
+        <Group title="Project &amp; Invoice Information" rows={project} />
       </div>
     </div>
   );

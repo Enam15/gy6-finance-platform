@@ -30,7 +30,7 @@ export default async function PrintInvoicePage({
           <InvoiceDocument data={doc} />
         </div>
         {hasAppendixContent(appendix) && (
-          <div className="w-full max-w-[920px] rounded-lg bg-white p-6 shadow-lg print:break-before-page print:rounded-none print:p-10 print:shadow-none">
+          <div className="invoice-print-scale shadow-lg print:break-before-page print:shadow-none">
             <InvoiceAppendix data={appendix} />
           </div>
         )}
