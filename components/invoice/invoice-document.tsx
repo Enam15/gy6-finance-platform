@@ -33,8 +33,26 @@ export interface InvoiceDocumentData {
   billToEmail?: string | null;
   billToPhone?: string | null;
   billToTin?: string | null;
-  billToBin?: string | null;
-  billToAttention?: string | null;
+
+  // Optional formal-voucher details. When any are filled they render as
+  // labelled groups directly under Bill To (the page grows to fit); a normal
+  // invoice with none of these set is pixel-unchanged.
+  recipientName?: string | null;
+  recipientBin?: string | null;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
+  recipientAddress?: string | null;
+  recipientAttention?: string | null;
+  payeeName?: string | null;
+  payeeFirm?: string | null;
+  payeeBin?: string | null;
+  payeeAddress?: string | null;
+  payeeEmail?: string | null;
+  payeeWorkType?: string | null;
+  payeeCountry?: string | null;
+  contractSubject?: string | null;
+  contractNo?: string | null;
+  contractPeriod?: string | null;
 
   payBank?: string | null;
   payAccountName?: string | null;
@@ -133,6 +151,38 @@ function Fields({
   );
 }
 
+type FormalGroup = {
+  title: string;
+  pairs: [string, string | null | undefined][];
+};
+
+/** Formal-voucher groups rendered under Bill To, in the invoice's field style. */
+function FormalUnderBillTo({ groups }: { groups: FormalGroup[] }) {
+  if (groups.length === 0) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      {groups.map((g, i) => (
+        <div key={g.title} style={{ marginTop: i === 0 ? 0 : 8 }}>
+          <div
+            style={{
+              color: INK,
+              fontSize: 9,
+              fontWeight: 700,
+              fontFamily: SERIF,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              marginBottom: 2,
+            }}
+          >
+            {g.title}
+          </div>
+          <Fields align="left" pairs={g.pairs} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const ITEM_COL: CSSProperties = { flex: 1, paddingRight: 8 };
 const QTY_COL: CSSProperties = { width: 80, textAlign: "right" };
 const TOTAL_COL: CSSProperties = { width: 95, textAlign: "right" };
@@ -142,17 +192,105 @@ const RULE: CSSProperties = {
   width: "100%",
 };
 
+function isFilled(v: string | null | undefined): boolean {
+  return v != null && `${v}`.trim() !== "";
+}
+
+/** Formal-voucher groups shown under Bill To (bank is omitted - it is already
+ *  in Payment Method). Only groups with at least one value are returned. */
+function buildFormalGroups(data: InvoiceDocumentData): FormalGroup[] {
+  return (
+    [
+      {
+        title: "Recipient",
+        pairs: [
+          ["Recipient Name", data.recipientName],
+          ["Recipient BIN", data.recipientBin],
+          ["Phone", data.recipientPhone],
+          ["Email", data.recipientEmail],
+          ["Address", data.recipientAddress],
+          ["Attention", data.recipientAttention],
+        ],
+      },
+      {
+        title: "Payee",
+        pairs: [
+          ["Payee Name", data.payeeName],
+          ["Firm Name", data.payeeFirm],
+          ["Payee BIN", data.payeeBin],
+          ["Payee Address", data.payeeAddress],
+          ["Payee Email", data.payeeEmail],
+          ["Type of Work", data.payeeWorkType],
+          ["Country of Service", data.payeeCountry],
+        ],
+      },
+      {
+        title: "Contract",
+        pairs: [
+          ["Subject of Contract", data.contractSubject],
+          ["Contract No", data.contractNo],
+          ["Contract Period", data.contractPeriod],
+        ],
+      },
+    ] as FormalGroup[]
+  )
+    .map((g) => ({ title: g.title, pairs: g.pairs.filter(([, v]) => isFilled(v)) }))
+    .filter((g) => g.pairs.length > 0);
+}
+
+/**
+ * Extra vertical space needed under Bill To for the formal details, so the
+ * bottom-anchored signature/footer sit below them and the page grows to fit.
+ * Estimated from filled-line counts (over-estimated a touch, wrap-prone
+ * fields counted as two lines, so the footer never overlaps). A normal
+ * invoice with no formal details returns 0 and is pixel-identical.
+ */
+function computeExtra(data: InvoiceDocumentData): number {
+  const groups = buildFormalGroups(data);
+  if (groups.length === 0) return 0;
+
+  const billToLines = [
+    data.billToName,
+    data.billToAddress,
+    data.billToEmail,
+    data.billToPhone,
+    data.billToTin,
+  ].filter(isFilled).length;
+
+  let formalHeight = 14; // gap under Bill To
+  for (const g of groups) {
+    formalHeight += 15; // group heading
+    for (const [label] of g.pairs) {
+      formalHeight += /Address|Subject/.test(label) ? 34 : 18;
+    }
+    formalHeight += 8; // gap after group
+  }
+  formalHeight += 16; // safety
+
+  const leftBottom = 522 + billToLines * 18 + formalHeight;
+  return Math.max(0, Math.ceil(leftBottom + 16 - 760));
+}
+
+/** Total rendered height of the invoice canvas (grows with formal details). */
+export function invoiceCanvasHeight(data: InvoiceDocumentData): number {
+  return INVOICE_HEIGHT + computeExtra(data);
+}
+
 export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
   const sym = symbol(data.currency);
   const total = data.items.reduce((sum, it) => sum + safeBig(it.amount), 0n);
   const logoUrl = data.logoUrl ?? "/invoice/logo-halftone.svg";
   const signatureUrl = data.signatureUrl ?? "/invoice/signature.png";
 
+  const formalGroups = buildFormalGroups(data);
+  const extra = computeExtra(data);
+  const canvasHeight = INVOICE_HEIGHT + extra;
+
   return (
     <div
       style={{
         width: INVOICE_WIDTH,
-        height: INVOICE_HEIGHT,
+        height: canvasHeight,
         position: "relative",
         background: "#EEE6D0",
         overflow: "hidden",
@@ -311,10 +449,9 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             ["Email", data.billToEmail],
             ["Phone", data.billToPhone],
             ["TIN Number", data.billToTin],
-            ["BIN", data.billToBin],
-            ["Attention", data.billToAttention],
           ]}
         />
+        <FormalUnderBillTo groups={formalGroups} />
       </div>
 
       {/* Payment method */}
@@ -415,7 +552,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         style={{
           position: "absolute",
           left: 436,
-          top: 678,
+          top: 678 + extra,
           width: 131,
           height: 54,
           objectFit: "contain",
@@ -428,7 +565,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         style={{
           position: "absolute",
           left: 408,
-          top: 733,
+          top: 733 + extra,
           width: 154,
           ...RULE,
           borderTop: `1px solid ${INK60}`,
@@ -438,7 +575,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         style={{
           position: "absolute",
           left: 320,
-          top: 736,
+          top: 736 + extra,
           width: 242,
           textAlign: "right",
           fontSize: 10,
@@ -471,7 +608,7 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
         style={{
           position: "absolute",
           left: 33,
-          top: 760,
+          top: 760 + extra,
           width: 243,
           color: "rgba(50,55,59,0.60)",
           fontSize: 10,

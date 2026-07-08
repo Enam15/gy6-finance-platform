@@ -7,7 +7,6 @@ import {
   DEFAULT_SIGNATURE_KEY,
   signatureUrlForKey,
 } from "@/lib/invoice/signatories";
-import type { InvoiceAppendixData } from "@/components/invoice/invoice-appendix";
 
 export type InvoiceStatusValue = "DRAFT" | "SENT" | "PAID";
 
@@ -215,8 +214,22 @@ export function formToDocument(form: InvoiceForm): InvoiceDocumentData {
     billToEmail: form.billToEmail,
     billToPhone: form.billToPhone,
     billToTin: form.billToTin,
-    billToBin: form.recipientBin,
-    billToAttention: form.recipientAttention,
+    recipientName: form.recipientName,
+    recipientBin: form.recipientBin,
+    recipientPhone: form.recipientPhone,
+    recipientEmail: form.recipientEmail,
+    recipientAddress: form.recipientAddress,
+    recipientAttention: form.recipientAttention,
+    payeeName: form.payeeName,
+    payeeFirm: form.payeeFirm,
+    payeeBin: form.payeeBin,
+    payeeAddress: form.payeeAddress,
+    payeeEmail: form.payeeEmail,
+    payeeWorkType: form.payeeWorkType,
+    payeeCountry: form.payeeCountry,
+    contractSubject: form.contractSubject,
+    contractNo: form.contractNo,
+    contractPeriod: form.contractPeriod,
     payBank: form.payBank,
     payAccountName: form.payAccountName,
     payAccountType: form.payAccountType,
@@ -307,38 +320,4 @@ export function formToPayload(form: InvoiceForm): Record<string, unknown> {
 /** Grand total of the form's items, in minor units. */
 export function formTotalMinor(form: InvoiceForm): bigint {
   return form.items.reduce((sum, it) => sum + minorFromInput(it.amount), 0n);
-}
-
-/** Formal-details appendix data from the current form (live preview). */
-export function formToAppendix(form: InvoiceForm): InvoiceAppendixData {
-  return {
-    recipientName: form.recipientName,
-    recipientBin: form.recipientBin,
-    recipientPhone: form.recipientPhone,
-    recipientEmail: form.recipientEmail,
-    recipientAddress: form.recipientAddress,
-    recipientAttention: form.recipientAttention,
-    payeeName: form.payeeName,
-    payeeFirm: form.payeeFirm,
-    payeeBin: form.payeeBin,
-    payeeAddress: form.payeeAddress,
-    payeeEmail: form.payeeEmail,
-    payeeWorkType: form.payeeWorkType,
-    payeeCountry: form.payeeCountry,
-    payAccountName: form.payAccountName,
-    payAccountNumber: form.payAccountNumber,
-    payBank: form.payBank,
-    payRouting: form.payRouting,
-    paySwift: form.paySwift,
-    payBranch: form.payBranch,
-    payBankAddress: form.payBankAddress,
-    contractSubject: form.contractSubject,
-    contractNo: form.contractNo,
-    contractPeriod: form.contractPeriod,
-    invoiceDate: isoToLabel(form.issuanceDate),
-    invoiceNumber: String(Number.parseInt(form.number, 10) || 0).padStart(
-      2,
-      "0",
-    ),
-  };
 }

@@ -24,20 +24,15 @@ import {
 import {
   InvoiceDocument,
   INVOICE_WIDTH,
-  INVOICE_HEIGHT,
+  invoiceCanvasHeight,
 } from "@/components/invoice/invoice-document";
 import {
   emptyItem,
   formToDocument,
   formToPayload,
-  formToAppendix,
   type InvoiceForm,
   type InvoiceStatusValue,
 } from "@/lib/invoice/form";
-import {
-  InvoiceAppendix,
-  hasAppendixContent,
-} from "@/components/invoice/invoice-appendix";
 import {
   SIGNATORY_PRESETS,
   DEFAULT_SIGNATURE_KEY,
@@ -108,7 +103,7 @@ export function InvoiceEditor({
   const [saving, setSaving] = useState(false);
 
   const doc = useMemo(() => formToDocument(form), [form]);
-  const appendixData = useMemo(() => formToAppendix(form), [form]);
+  const docHeight = invoiceCanvasHeight(doc);
 
   // value -> label maps so each Select's trigger shows the label (not the raw
   // code) for the invoice's current values, including on edit.
@@ -559,7 +554,7 @@ export function InvoiceEditor({
             className="overflow-hidden rounded-md border shadow-sm"
             style={{
               width: INVOICE_WIDTH * PREVIEW_SCALE,
-              height: INVOICE_HEIGHT * PREVIEW_SCALE,
+              height: docHeight * PREVIEW_SCALE,
             }}
           >
             <div
@@ -567,32 +562,12 @@ export function InvoiceEditor({
                 transform: `scale(${PREVIEW_SCALE})`,
                 transformOrigin: "top left",
                 width: INVOICE_WIDTH,
-                height: INVOICE_HEIGHT,
+                height: docHeight,
               }}
             >
               <InvoiceDocument data={doc} />
             </div>
           </div>
-          {hasAppendixContent(appendixData) && (
-            <div
-              className="mt-4 overflow-hidden rounded-md border shadow-sm"
-              style={{
-                width: INVOICE_WIDTH * PREVIEW_SCALE,
-                height: INVOICE_HEIGHT * PREVIEW_SCALE,
-              }}
-            >
-              <div
-                style={{
-                  transform: `scale(${PREVIEW_SCALE})`,
-                  transformOrigin: "top left",
-                  width: INVOICE_WIDTH,
-                  height: INVOICE_HEIGHT,
-                }}
-              >
-                <InvoiceAppendix data={appendixData} />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
