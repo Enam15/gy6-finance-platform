@@ -23,6 +23,10 @@ import {
   type RecurrenceState,
 } from "@/lib/recurrence";
 import { EntryFormFields } from "@/components/entry-form-fields";
+import {
+  EntryFilePicker,
+  uploadEntryFiles,
+} from "@/components/entry-file-picker";
 import { blankEntryForm, type EntryFormState } from "@/lib/entry-form";
 import { feePayload } from "@/lib/fees";
 
@@ -54,11 +58,13 @@ export function CreateIncomeDialog({
   const [form, setForm] = useState<EntryFormState>(blankEntryForm);
   const [recurrence, setRecurrence] =
     useState<RecurrenceState>(DEFAULT_RECURRENCE);
+  const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
     setForm(blankEntryForm());
     setRecurrence(DEFAULT_RECURRENCE);
+    setFiles([]);
   }
 
   function onOpenChange(next: boolean) {
@@ -117,10 +123,17 @@ export function CreateIncomeDialog({
           ...feeFields,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as ApiError;
+      const data = (await res.json().catch(() => ({}))) as ApiError & {
+        entry?: { id?: string };
+      };
       if (!res.ok) {
         toast.error(data.error ?? "Failed to create income draft");
         return;
+      }
+
+      const newId = data.entry?.id;
+      if (newId && files.length > 0) {
+        await uploadEntryFiles("income", newId, files);
       }
 
       const interval = resolveInterval(recurrence);
@@ -198,6 +211,11 @@ export function CreateIncomeDialog({
               idPrefix="income"
               value={recurrence}
               onChange={setRecurrence}
+              disabled={submitting}
+            />
+            <EntryFilePicker
+              files={files}
+              onChange={setFiles}
               disabled={submitting}
             />
           </div>
