@@ -170,23 +170,28 @@ export class InvoiceService {
       (await new InvoiceRepository(this.db).maxNumber()) + 1;
     const data = toWriteData(parsed.data, number);
 
-    const invoice = await this.db.$transaction(async (tx) => {
-      const created = await new InvoiceRepository(tx).create(
-        data,
-        options.actorId ?? null,
-      );
-      await new AuditLogRepository(tx).record({
-        action: "CREATE",
-        entityType: "Invoice",
-        entityId: created.id,
-        summary: `Invoice #${created.number} created for ${created.billToName}`,
-        after: { id: created.id, number: created.number },
-        actorId: options.actorId ?? null,
-        actorLabel: options.actorLabel ?? null,
+    try {
+      const invoice = await this.db.$transaction(async (tx) => {
+        const created = await new InvoiceRepository(tx).create(
+          data,
+          options.actorId ?? null,
+        );
+        await new AuditLogRepository(tx).record({
+          action: "CREATE",
+          entityType: "Invoice",
+          entityId: created.id,
+          summary: `Invoice #${created.number} created for ${created.billToName}`,
+          after: { id: created.id, number: created.number },
+          actorId: options.actorId ?? null,
+          actorLabel: options.actorLabel ?? null,
+        });
+        return created;
       });
-      return created;
-    });
-    return ok(invoice);
+      return ok(invoice);
+    } catch (error) {
+      // Surface the real DB error instead of an opaque 500.
+      return err(error instanceof Error ? error.message : "Failed to save invoice");
+    }
   }
 
   async update(
@@ -204,20 +209,24 @@ export class InvoiceService {
     const number = parsed.data.number ?? existing.number;
     const data = toWriteData(parsed.data, number);
 
-    const invoice = await this.db.$transaction(async (tx) => {
-      const updated = await new InvoiceRepository(tx).update(id, data);
-      await new AuditLogRepository(tx).record({
-        action: "UPDATE",
-        entityType: "Invoice",
-        entityId: id,
-        summary: `Invoice #${updated.number} updated`,
-        after: { id, number: updated.number },
-        actorId: options.actorId ?? null,
-        actorLabel: options.actorLabel ?? null,
+    try {
+      const invoice = await this.db.$transaction(async (tx) => {
+        const updated = await new InvoiceRepository(tx).update(id, data);
+        await new AuditLogRepository(tx).record({
+          action: "UPDATE",
+          entityType: "Invoice",
+          entityId: id,
+          summary: `Invoice #${updated.number} updated`,
+          after: { id, number: updated.number },
+          actorId: options.actorId ?? null,
+          actorLabel: options.actorLabel ?? null,
+        });
+        return updated;
       });
-      return updated;
-    });
-    return ok(invoice);
+      return ok(invoice);
+    } catch (error) {
+      return err(error instanceof Error ? error.message : "Failed to save invoice");
+    }
   }
 
   async remove(
