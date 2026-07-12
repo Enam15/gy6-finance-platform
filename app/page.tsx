@@ -11,6 +11,7 @@ import { formatMoney, money } from "@/lib/money";
 import { monthRangesBack } from "@/lib/dates";
 import { DashboardChartsLazy } from "./_components/dashboard-charts-lazy";
 import {
+  ChartRangeCalendar,
   ChartRangePicker,
   QuarterPicker,
   YearPicker,
@@ -65,6 +66,42 @@ function rangeLabel(
     default:
       return "Last 12 months";
   }
+}
+
+/** Parse a "yyyy-mm-dd" search param to a UTC date, or null. */
+function parseIsoDate(v: string | string[] | undefined): Date | null {
+  if (typeof v !== "string") return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Month-start dates from `from`'s month to `to`'s month, inclusive (capped). */
+function monthsBetween(from: Date, to: Date): Date[] {
+  const months: Date[] = [];
+  let y = from.getUTCFullYear();
+  let m = from.getUTCMonth();
+  const endY = to.getUTCFullYear();
+  const endM = to.getUTCMonth();
+  while ((y < endY || (y === endY && m <= endM)) && months.length < 120) {
+    months.push(new Date(Date.UTC(y, m, 1)));
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return months;
+}
+
+function dateLabel(d: Date): string {
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 interface DashboardPageProps {
@@ -134,7 +171,20 @@ export default async function DashboardPage({
   const range: ChartRange = CHART_RANGES.includes(rangeParam as ChartRange)
     ? (rangeParam as ChartRange)
     : "12m";
-  const chartMonths = monthsForRange(range, now, q, qYear, yYear);
+
+  // A custom calendar range (both dates set, from <= to) overrides the preset.
+  const fromStr = typeof sp["from"] === "string" ? sp["from"] : "";
+  const toStr = typeof sp["to"] === "string" ? sp["to"] : "";
+  const fromDate = parseIsoDate(sp["from"]);
+  const toDate = parseIsoDate(sp["to"]);
+  const customRange =
+    fromDate !== null &&
+    toDate !== null &&
+    fromDate.getTime() <= toDate.getTime();
+  const chartMonths =
+    customRange && fromDate && toDate
+      ? monthsBetween(fromDate, toDate)
+      : monthsForRange(range, now, q, qYear, yYear);
 
   // Year options: current year and the previous four, plus any selected year.
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -157,7 +207,10 @@ export default async function DashboardPage({
     expenseMinor: m.expense.toString(),
   }));
 
-  const chartRangeLabel = rangeLabel(range, q, qYear, yYear);
+  const chartRangeLabel =
+    customRange && fromDate && toDate
+      ? `${dateLabel(fromDate)} – ${dateLabel(toDate)}`
+      : rangeLabel(range, q, qYear, yYear);
   const yearSuffix = yYear === currentYear ? " year-to-date" : "";
 
   return (
@@ -232,12 +285,15 @@ export default async function DashboardPage({
                 position.
               </CardDescription>
             </div>
-            <ChartRangePicker
-              range={range}
-              quarter={q}
-              quarterYear={qYear}
-              year={yYear}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <ChartRangeCalendar from={fromStr} to={toStr} />
+              <ChartRangePicker
+                range={customRange ? "custom" : range}
+                quarter={q}
+                quarterYear={qYear}
+                year={yYear}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
