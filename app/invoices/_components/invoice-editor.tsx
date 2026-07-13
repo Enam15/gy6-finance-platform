@@ -365,13 +365,8 @@ export function InvoiceEditor({
               <p className="text-xs font-medium text-foreground sm:col-span-2">
                 Payee information
               </p>
-              <Field id="pe-name" label="Payee name" value={form.payeeName} onChange={(v) => set("payeeName", v)} />
-              <Field id="pe-firm" label="Firm name" value={form.payeeFirm} onChange={(v) => set("payeeFirm", v)} />
-              <Field id="pe-bin" label="Payee BIN" value={form.payeeBin} onChange={(v) => set("payeeBin", v)} />
+              <Field id="pe-name" label="Payee / firm name" value={form.payeeName} onChange={(v) => set("payeeName", v)} />
               <Field id="pe-email" label="Payee email" value={form.payeeEmail} onChange={(v) => set("payeeEmail", v)} />
-              <div className="sm:col-span-2">
-                <Field id="pe-addr" label="Payee address" value={form.payeeAddress} onChange={(v) => set("payeeAddress", v)} />
-              </div>
               <Field id="pe-work" label="Type of work" value={form.payeeWorkType} onChange={(v) => set("payeeWorkType", v)} />
               <Field id="pe-country" label="Country of service" value={form.payeeCountry} onChange={(v) => set("payeeCountry", v)} />
 

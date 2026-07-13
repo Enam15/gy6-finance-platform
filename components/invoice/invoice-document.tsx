@@ -207,11 +207,8 @@ function buildFormalGroups(data: InvoiceDocumentData): FormalGroup[] {
       {
         title: "Payee",
         pairs: [
-          ["Payee Name", data.payeeName],
-          ["Firm Name", data.payeeFirm],
-          ["Payee BIN", data.payeeBin],
-          ["Payee Address", data.payeeAddress],
-          ["Payee Email", data.payeeEmail],
+          ["Name", data.payeeName],
+          ["Email", data.payeeEmail],
           ["Type of Work", data.payeeWorkType],
           ["Country of Service", data.payeeCountry],
         ],
