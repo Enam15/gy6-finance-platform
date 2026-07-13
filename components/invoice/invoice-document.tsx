@@ -481,16 +481,17 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  display: "block",
+                  display: "inline-block",
+                  width: 113,
                   marginTop: 12,
-                  background: "#2E3439",
+                  background: "#31363B",
                   color: "#F4EEDF",
-                  borderRadius: 9,
+                  borderRadius: 10,
                   padding: "7px 0",
                   textAlign: "center",
                   textDecoration: "none",
                   fontFamily: SERIF,
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               >
                 Payment Link
