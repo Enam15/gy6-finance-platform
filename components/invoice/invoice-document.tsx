@@ -196,22 +196,14 @@ function isFilled(v: string | null | undefined): boolean {
   return v != null && `${v}`.trim() !== "";
 }
 
-/** Formal-voucher groups shown under Bill To (bank is omitted - it is already
- *  in Payment Method). Only groups with at least one value are returned. */
+/**
+ * Additional-voucher groups shown under Bill To. The recipient is the Bill To
+ * party (shown above), and the bank is in Payment Method, so neither repeats
+ * here - only Payee and Contract. Groups with no values are dropped.
+ */
 function buildFormalGroups(data: InvoiceDocumentData): FormalGroup[] {
   return (
     [
-      {
-        title: "Recipient",
-        pairs: [
-          ["Recipient Name", data.recipientName],
-          ["Recipient BIN", data.recipientBin],
-          ["Phone", data.recipientPhone],
-          ["Email", data.recipientEmail],
-          ["Address", data.recipientAddress],
-          ["Attention", data.recipientAttention],
-        ],
-      },
       {
         title: "Payee",
         pairs: [
@@ -255,6 +247,8 @@ function computeExtra(data: InvoiceDocumentData): number {
     data.billToEmail,
     data.billToPhone,
     data.billToTin,
+    data.recipientBin,
+    data.recipientAttention,
   ].filter(isFilled).length;
 
   let formalHeight = 14; // gap under Bill To
@@ -449,6 +443,8 @@ export function InvoiceDocument({ data }: { data: InvoiceDocumentData }) {
             ["Email", data.billToEmail],
             ["Phone", data.billToPhone],
             ["TIN Number", data.billToTin],
+            ["BIN", data.recipientBin],
+            ["Attention", data.recipientAttention],
           ]}
         />
         <FormalUnderBillTo groups={formalGroups} />

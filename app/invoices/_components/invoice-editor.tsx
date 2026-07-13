@@ -334,35 +334,35 @@ export function InvoiceEditor({
                 onChange={(v) => set("billToPhone", v)}
                 tel
               />
+              <Field
+                id="bt-bin"
+                label="BIN (optional)"
+                value={form.recipientBin}
+                onChange={(v) => set("recipientBin", v)}
+              />
+              <Field
+                id="bt-attn"
+                label="Attention (optional)"
+                value={form.recipientAttention}
+                onChange={(v) => set("recipientAttention", v)}
+              />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Formal details (optional)
+                Additional details (optional)
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <p className="text-xs text-muted-foreground sm:col-span-2">
-                For formal clients that need a full voucher. Leave blank for a
-                normal invoice — when filled, these render as a matching
-                details page after the invoice.
+                Extra payee and contract details for the voucher. The recipient
+                is the Bill To party above. Leave blank for a normal invoice —
+                when filled, these render under Bill To.
               </p>
 
               <p className="text-xs font-medium text-foreground sm:col-span-2">
-                Recipient information
-              </p>
-              <Field id="rc-name" label="Recipient name" value={form.recipientName} onChange={(v) => set("recipientName", v)} />
-              <Field id="rc-bin" label="Recipient BIN" value={form.recipientBin} onChange={(v) => set("recipientBin", v)} />
-              <Field id="rc-phone" label="Phone" value={form.recipientPhone} onChange={(v) => set("recipientPhone", v)} tel />
-              <Field id="rc-email" label="Email" value={form.recipientEmail} onChange={(v) => set("recipientEmail", v)} />
-              <div className="sm:col-span-2">
-                <Field id="rc-addr" label="Address" value={form.recipientAddress} onChange={(v) => set("recipientAddress", v)} />
-              </div>
-              <Field id="rc-attn" label="Attention" value={form.recipientAttention} onChange={(v) => set("recipientAttention", v)} />
-
-              <p className="mt-2 text-xs font-medium text-foreground sm:col-span-2">
                 Payee information
               </p>
               <Field id="pe-name" label="Payee name" value={form.payeeName} onChange={(v) => set("payeeName", v)} />
