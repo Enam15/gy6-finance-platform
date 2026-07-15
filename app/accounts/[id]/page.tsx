@@ -127,27 +127,25 @@ export default async function AccountDetailPage({ params }: PageProps) {
 
         <Card>
           <CardHeader>
-            <CardDescription>Outstanding income</CardDescription>
+            <CardDescription>Money owed to you</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {formatMoney(money(outstandingIncome))}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Sum of amount_due across confirmed income entries against this
-            account.
+            Confirmed income from this account that hasn&apos;t been paid yet.
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardDescription>Outstanding expense</CardDescription>
+            <CardDescription>Money you owe</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {formatMoney(money(outstandingExpense))}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Sum of amount_due across confirmed expense entries against this
-            account.
+            Confirmed expense to this account that hasn&apos;t been paid yet.
           </CardContent>
         </Card>
 

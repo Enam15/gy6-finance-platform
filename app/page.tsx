@@ -234,14 +234,14 @@ export default async function DashboardPage({
             description="Total balance across Business accounts"
           />
           <MoneyCard
-            label="Outstanding receivables"
+            label="Money owed to you"
             amount={kpis.outstandingReceivables}
-            description="Total still owed to you (confirmed income)"
+            description="Confirmed income not yet received (receivables)"
           />
           <MoneyCard
-            label="Outstanding payables"
+            label="Money you owe"
             amount={kpis.outstandingPayables}
-            description="Total you still owe (confirmed expense)"
+            description="Confirmed expense not yet paid (payables)"
           />
         </div>
       </section>

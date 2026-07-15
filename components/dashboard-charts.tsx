@@ -114,12 +114,12 @@ export function DashboardCharts({
       { key: "cash", name: "Cash on hand", value: Number(BigInt(cashMinor)) / 100 },
       {
         key: "receivables",
-        name: "Receivables",
+        name: "Owed to you",
         value: Number(BigInt(receivablesMinor)) / 100,
       },
       {
         key: "payables",
-        name: "Payables",
+        name: "You owe",
         value: Number(BigInt(payablesMinor)) / 100,
       },
     ],
@@ -269,7 +269,7 @@ export function DashboardCharts({
             bars: "Income vs Expense (bars)",
             lines: "Income vs Expense (trend)",
             net: "Net profit (monthly)",
-            position: "Cash / Receivables / Payables",
+            position: "Cash / owed to you / you owe",
           }}
           value={chart}
           onValueChange={(v) => setChart((v ?? "bars") as ChartKey)}
@@ -281,7 +281,7 @@ export function DashboardCharts({
             <SelectItem value="bars">Income vs Expense (bars)</SelectItem>
             <SelectItem value="lines">Income vs Expense (trend)</SelectItem>
             <SelectItem value="net">Net profit (monthly)</SelectItem>
-            <SelectItem value="position">Cash / Receivables / Payables</SelectItem>
+            <SelectItem value="position">Cash / owed to you / you owe</SelectItem>
           </SelectContent>
         </Select>
       </div>
