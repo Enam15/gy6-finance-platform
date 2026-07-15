@@ -23,6 +23,7 @@ import { customFieldValues } from "@/lib/account-fields";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { AdjustBalanceButton } from "./_components/adjust-balance-button";
+import { AccountAdjustToggle } from "./_components/account-adjust-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -97,10 +98,16 @@ export default async function AccountDetailPage({ params }: PageProps) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <AdjustBalanceButton
+          {account.allowBalanceAdjust && (
+            <AdjustBalanceButton
+              accountId={id}
+              accountName={account.name}
+              currentBalanceMinor={account.balance.toString()}
+            />
+          )}
+          <AccountAdjustToggle
             accountId={id}
-            accountName={account.name}
-            currentBalanceMinor={account.balance.toString()}
+            isOn={account.allowBalanceAdjust}
           />
           <ExportLinks basePath={`/api/accounts/${id}/export`} />
         </div>

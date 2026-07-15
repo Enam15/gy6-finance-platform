@@ -20,6 +20,7 @@ const createAccountSchema = z.object({
   name: z.string().trim().min(1, "Account name is required").max(120),
   description: z.string().trim().max(500).optional(),
   allowNegative: z.boolean().optional(),
+  allowBalanceAdjust: z.boolean().optional(),
   /** Values for the category's custom fields, keyed by field id. */
   customValues: z.record(z.string(), z.string()).optional(),
 });
@@ -189,6 +190,7 @@ export class AccountService {
         normalBalance,
         description: data.description ?? null,
         allowNegative: data.allowNegative ?? false,
+        allowBalanceAdjust: data.allowBalanceAdjust ?? true,
         customValues:
           Object.keys(customValues).length > 0 ? customValues : undefined,
       });
@@ -210,6 +212,33 @@ export class AccountService {
     });
 
     return ok(account);
+  }
+
+  /** Turn the "Adjust balance" action on or off for an account. */
+  async setBalanceAdjustable(
+    id: string,
+    allow: boolean,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<Account>> {
+    const account = await new AccountRepository(this.db).findById(id);
+    if (!account) return err(`Account ${id} was not found`);
+    if (account.allowBalanceAdjust === allow) return ok(account);
+
+    const updated = await this.db.$transaction(async (tx) => {
+      const u = await new AccountRepository(tx).setBalanceAdjustable(id, allow);
+      await new AuditLogRepository(tx).record({
+        action: "UPDATE",
+        entityType: "Account",
+        entityId: id,
+        summary: `Balance adjustment ${allow ? "enabled" : "disabled"} for "${u.name}"`,
+        before: { allowBalanceAdjust: account.allowBalanceAdjust },
+        after: { allowBalanceAdjust: u.allowBalanceAdjust },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return u;
+    });
+    return ok(updated);
   }
 
   /**

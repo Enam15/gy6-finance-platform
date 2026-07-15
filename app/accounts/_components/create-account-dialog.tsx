@@ -44,6 +44,7 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [allowAdjust, setAllowAdjust] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const selectedCategory = useMemo(
@@ -58,6 +59,7 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
     setName("");
     setCategoryId("");
     setFieldValues({});
+    setAllowAdjust(true);
   }
 
   function onOpenChange(next: boolean) {
@@ -86,6 +88,7 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
           name: trimmed,
           categoryId,
           customValues,
+          allowBalanceAdjust: allowAdjust,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
@@ -169,6 +172,16 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
                 />
               </div>
             ))}
+
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={allowAdjust}
+                onChange={(e) => setAllowAdjust(e.target.checked)}
+                className="h-4 w-4 rounded border-input accent-[var(--primary)]"
+              />
+              Allow balance adjustment
+            </label>
           </div>
 
           <DialogFooter>

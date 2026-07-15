@@ -18,6 +18,8 @@ export interface CreateAccountData {
   normalBalance: NormalBalance;
   description?: string | null;
   allowNegative?: boolean;
+  /** Whether the "Adjust balance" action is offered (default true). */
+  allowBalanceAdjust?: boolean;
   systemKey?: SystemAccountKey | null;
   /** Values for the category's custom fields, as a { fieldId: value } map. */
   customValues?: Prisma.InputJsonValue;
@@ -97,9 +99,18 @@ export class AccountRepository {
         normalBalance: data.normalBalance,
         description: data.description ?? null,
         allowNegative: data.allowNegative ?? false,
+        allowBalanceAdjust: data.allowBalanceAdjust ?? true,
         systemKey: data.systemKey ?? null,
         customValues: data.customValues ?? undefined,
       },
+    });
+  }
+
+  /** Flip whether the "Adjust balance" action is offered for an account. */
+  setBalanceAdjustable(id: string, allow: boolean): Promise<Account> {
+    return this.db.account.update({
+      where: { id },
+      data: { allowBalanceAdjust: allow },
     });
   }
 

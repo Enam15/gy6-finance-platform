@@ -152,6 +152,8 @@ model Account {
   description   String?
   balance       BigInt            @default(0)
   allowNegative Boolean           @default(false) @map("allow_negative")
+  /// Whether the "Adjust balance" action is offered for this account.
+  allowBalanceAdjust Boolean      @default(true) @map("allow_balance_adjust")
   isActive      Boolean           @default(true) @map("is_active")
   /// Values for the category's custom fields: { [fieldId]: value }.
   customValues  Json?             @map("custom_values")
