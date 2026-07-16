@@ -20,6 +20,7 @@ import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
 import { customFieldValues } from "@/lib/account-fields";
+import { cn } from "@/lib/utils";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { AdjustBalanceButton } from "./_components/adjust-balance-button";
@@ -77,6 +78,10 @@ export default async function AccountDetailPage({ params }: PageProps) {
   const customFields = customFieldValues(
     category.customFields,
     account.customValues,
+  );
+  // Postings a reversal has cancelled - kept on the record, shown struck through.
+  const reversedIds = new Set(
+    await statementService.reversedIdsAmong(entries.map((e) => e.id)),
   );
 
   return (
@@ -222,12 +227,23 @@ export default async function AccountDetailPage({ params }: PageProps) {
                   const counterpartyId = isDebit
                     ? entry.creditAccountId
                     : entry.debitAccountId;
+                  const wasReversed = reversedIds.has(entry.id);
+                  const cancelled =
+                    wasReversed || entry.entryType === "REVERSAL";
                   return (
-                    <TableRow key={entry.id}>
+                    <TableRow
+                      key={entry.id}
+                      className={cn(cancelled && "opacity-60")}
+                    >
                       <TableCell className="tabular-nums">
                         {formatDate(entry.effectiveDate)}
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell
+                        className={cn(
+                          "font-medium",
+                          cancelled && "line-through",
+                        )}
+                      >
                         {entry.description}
                       </TableCell>
                       <TableCell>
@@ -235,16 +251,28 @@ export default async function AccountDetailPage({ params }: PageProps) {
                           {isDebit ? "DR" : "CR"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={cn(cancelled && "line-through")}>
                         {nameById.get(counterpartyId) ?? "Unknown"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell
+                        className={cn(
+                          "text-right tabular-nums",
+                          cancelled && "line-through",
+                        )}
+                      >
                         {formatMoney(money(entry.amount))}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={entryTypeBadgeVariant(entry.entryType)}>
-                          {entry.entryType}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            variant={entryTypeBadgeVariant(entry.entryType)}
+                          >
+                            {entry.entryType}
+                          </Badge>
+                          {wasReversed && (
+                            <Badge variant="outline">Reversed</Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

@@ -38,6 +38,15 @@ export class StatementEntryService {
   }
 
   /**
+   * Of the given entry ids, those cancelled by a reversal. The ledger is
+   * append-only, so a reversed posting stays on the record - callers use this
+   * to mark it (and its reversal) as no longer live.
+   */
+  reversedIdsAmong(ids: string[]): Promise<string[]> {
+    return new StatementEntryRepository(this.db).reversedIdsAmong(ids);
+  }
+
+  /**
    * Every ledger entry. Used by /api/ledger/export. Order is by
    * effectiveDate then createdAt; default is desc to match the page view.
    */

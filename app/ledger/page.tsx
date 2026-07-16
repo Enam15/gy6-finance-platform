@@ -23,6 +23,7 @@ import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { ListSelectFilter } from "@/app/_components/list-select-filter";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -71,10 +72,13 @@ export default async function LedgerPage({
   // Only the income/expense entries referenced by the shown postings need a
   // category lookup - fetch just those (id, categoryId), not every row.
   const sourceIds = [...new Set(entries.map((e) => e.sourceId))];
-  const [incomeRefs, expenseRefs] = await Promise.all([
+  const [incomeRefs, expenseRefs, reversedIdList] = await Promise.all([
     new IncomeService().categoryRefsByIds(sourceIds),
     new ExpenseService().categoryRefsByIds(sourceIds),
+    // Which of these postings a reversal has since cancelled.
+    new StatementEntryService().reversedIdsAmong(entries.map((e) => e.id)),
   ]);
+  const reversedIds = new Set(reversedIdList);
 
   const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
@@ -115,7 +119,8 @@ export default async function LedgerPage({
           <p className="text-sm text-muted-foreground">
             Immutable double-entry ledger. Every posting recorded here is
             permanent - corrections happen by reversing or adjusting, never
-            by editing.
+            by editing. A cancelled posting and its reversal stay on the
+            record, struck through.
           </p>
         </div>
         <ExportLinks basePath="/api/ledger/export" />
@@ -175,33 +180,61 @@ export default async function LedgerPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="tabular-nums">
-                      {formatDate(entry.effectiveDate)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {entry.description}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {categoryBySourceId.get(entry.sourceId) ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      {accountNameById.get(entry.debitAccountId) ?? "Unknown"}
-                    </TableCell>
-                    <TableCell>
-                      {accountNameById.get(entry.creditAccountId) ?? "Unknown"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(money(entry.amount))}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={entryTypeBadgeVariant(entry.entryType)}>
-                        {entry.entryType}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {visibleEntries.map((entry) => {
+                  // A posting a reversal cancelled, and the reversal itself,
+                  // both stay on the record but are no longer live.
+                  const wasReversed = reversedIds.has(entry.id);
+                  const cancelled =
+                    wasReversed || entry.entryType === "REVERSAL";
+                  return (
+                    <TableRow
+                      key={entry.id}
+                      className={cn(cancelled && "opacity-60")}
+                    >
+                      <TableCell className="tabular-nums">
+                        {formatDate(entry.effectiveDate)}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "font-medium",
+                          cancelled && "line-through",
+                        )}
+                      >
+                        {entry.description}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {categoryBySourceId.get(entry.sourceId) ?? "—"}
+                      </TableCell>
+                      <TableCell className={cn(cancelled && "line-through")}>
+                        {accountNameById.get(entry.debitAccountId) ?? "Unknown"}
+                      </TableCell>
+                      <TableCell className={cn(cancelled && "line-through")}>
+                        {accountNameById.get(entry.creditAccountId) ??
+                          "Unknown"}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right tabular-nums",
+                          cancelled && "line-through",
+                        )}
+                      >
+                        {formatMoney(money(entry.amount))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            variant={entryTypeBadgeVariant(entry.entryType)}
+                          >
+                            {entry.entryType}
+                          </Badge>
+                          {wasReversed && (
+                            <Badge variant="outline">Reversed</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

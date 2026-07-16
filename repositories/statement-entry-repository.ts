@@ -98,6 +98,22 @@ export class StatementEntryRepository {
   }
 
   /**
+   * Of the given entry ids, those that some later REVERSAL entry cancels.
+   * Queried rather than derived from a page of rows, so an original is still
+   * flagged when its reversal falls outside the shown window.
+   */
+  async reversedIdsAmong(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.statementEntry.findMany({
+      where: { reversesEntryId: { in: ids } },
+      select: { reversesEntryId: true },
+    });
+    return rows
+      .map((r) => r.reversesEntryId)
+      .filter((v): v is string => v !== null);
+  }
+
+  /**
    * Every ledger entry. Used by exports - no `take` cap. Order is by
    * effectiveDate then createdAt so callers can pick chronological (asc,
    * natural for a statement) or newest-first (desc, natural for the UI).
