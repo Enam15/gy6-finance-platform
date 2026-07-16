@@ -23,6 +23,7 @@ import { formatMoney, money } from "@/lib/money";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { ListSelectFilter } from "@/app/_components/list-select-filter";
+import { ListToggleFilter } from "@/app/_components/list-toggle-filter";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -93,7 +94,17 @@ export default async function LedgerPage({
   const sp = await searchParams;
   const typeFilter = typeof sp.type === "string" ? sp.type : "";
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
+  const showReversed = sp.reversed === "1";
+  // A posting a reversal cancelled, and the reversal itself: both stay on the
+  // record forever, but neither is live, so they are out of the list by
+  // default. Filtering by type Reversal is an explicit ask to see them.
+  const isCancelled = (e: (typeof entries)[number]) =>
+    reversedIds.has(e.id) || e.entryType === "REVERSAL";
+  const hideCancelled = !showReversed && typeFilter !== "REVERSAL";
+  const cancelledCount = entries.filter(isCancelled).length;
+
   const visibleEntries = entries.filter((e) => {
+    if (hideCancelled && isCancelled(e)) return false;
     if (typeFilter && e.entryType !== typeFilter) return false;
     if (
       categoryFilter &&
@@ -120,7 +131,7 @@ export default async function LedgerPage({
             Immutable double-entry ledger. Every posting recorded here is
             permanent - corrections happen by reversing or adjusting, never
             by editing. A cancelled posting and its reversal stay on the
-            record, struck through.
+            record but are hidden from this list unless you ask for them.
           </p>
         </div>
         <ExportLinks basePath="/api/ledger/export" />
@@ -153,6 +164,13 @@ export default async function LedgerPage({
                   allLabel="All categories"
                 />
               )}
+              {cancelledCount > 0 && (
+                <ListToggleFilter
+                  paramKey="reversed"
+                  label={`Show reversed (${cancelledCount})`}
+                  checked={showReversed}
+                />
+              )}
             </div>
           </div>
         </CardHeader>
@@ -165,6 +183,13 @@ export default async function LedgerPage({
           ) : visibleEntries.length === 0 ? (
             <div className="rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
               No entries match these filters.
+              {hideCancelled && cancelledCount > 0 && (
+                <>
+                  {" "}
+                  Reversed postings are hidden - tick &ldquo;Show
+                  reversed&rdquo; to include them.
+                </>
+              )}
             </div>
           ) : (
             <Table>
@@ -181,11 +206,8 @@ export default async function LedgerPage({
               </TableHeader>
               <TableBody>
                 {visibleEntries.map((entry) => {
-                  // A posting a reversal cancelled, and the reversal itself,
-                  // both stay on the record but are no longer live.
                   const wasReversed = reversedIds.has(entry.id);
-                  const cancelled =
-                    wasReversed || entry.entryType === "REVERSAL";
+                  const cancelled = isCancelled(entry);
                   return (
                     <TableRow
                       key={entry.id}
