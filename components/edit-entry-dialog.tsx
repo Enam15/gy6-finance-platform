@@ -21,6 +21,7 @@ import {
   type SerializedEntry,
 } from "@/lib/entry-form";
 import { feePayload } from "@/lib/fees";
+import { POSTED_LOCK_REASON, lockedFieldsFor } from "@/lib/entry-edit";
 
 interface EditEntryDialogProps {
   kind: "income" | "expense";
@@ -33,7 +34,12 @@ interface ApiError {
   error?: string;
 }
 
-/** Edit a DRAFT income/expense entry. Only rendered for draft rows. */
+/**
+ * Edit an income/expense entry. A draft is fully editable. A posted entry
+ * shows the same form with its ledger-backed fields locked, and sends only
+ * the fields the server will accept - so a locked value can't even be
+ * expressed, let alone saved.
+ */
 export function EditEntryDialog({
   kind,
   entry,
@@ -45,6 +51,9 @@ export function EditEntryDialog({
   const [form, setForm] = useState<EntryFormState>(() => entryToForm(entry));
   const [submitting, setSubmitting] = useState(false);
 
+  const posted = entry.state === "CONFIRMED";
+  const lockedFields = lockedFieldsFor(entry.state);
+
   function onOpenChange(next: boolean) {
     setOpen(next);
     // Re-seed from the entry each time the dialog opens so a cancelled edit
@@ -52,63 +61,77 @@ export function EditEntryDialog({
     if (next) setForm(entryToForm(entry));
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmedDescription = form.description.trim();
-    const trimmedAmount = form.amount.trim();
-    if (!form.accountId || !form.categoryId || !trimmedDescription || !trimmedAmount) {
-      return;
-    }
+  /**
+   * The body for a posted entry carries only what the server will accept -
+   * its schema is strict, so including a locked field would fail the request
+   * rather than be ignored.
+   */
+  function postedPayload() {
+    return {
+      categoryId: form.categoryId,
+      description: form.description.trim(),
+      paymentDueOn: form.paymentDueOn,
+      notes: form.notes.trim() ? form.notes.trim() : null,
+    };
+  }
 
+  function draftPayload(): Record<string, unknown> | null {
+    const trimmedAmount = form.amount.trim();
     let minor: bigint;
     try {
       minor = moneyFromMajor(trimmedAmount);
     } catch {
       toast.error("Enter a valid amount like 1234.56");
-      return;
+      return null;
     }
     if (minor <= 0n) {
       toast.error("Amount must be greater than zero");
-      return;
+      return null;
     }
-
-    const feeFields = feePayload(form.fee) ?? {};
     if (form.fee.enabled && !feePayload(form.fee)) {
       toast.error(
         form.fee.mode === "PERCENT"
           ? "Enter a valid fee percentage between 0 and 100"
           : "Enter a valid fee amount",
       );
-      return;
+      return null;
     }
+    const accountKey = kind === "income" ? "clientAccountId" : "payeeAccountId";
+    return {
+      [accountKey]: form.accountId,
+      entryDate: form.entryDate,
+      totalAmount: minor.toString(),
+      ...postedPayload(),
+      ...(feePayload(form.fee) ?? {}),
+    };
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.categoryId || !form.description.trim()) return;
+    if (!posted && (!form.accountId || !form.amount.trim())) return;
+
+    const body = posted ? postedPayload() : draftPayload();
+    if (!body) return;
 
     const path =
-      kind === "income" ? `/api/income/${entry.id}` : `/api/expenses/${entry.id}`;
-    const accountKey =
-      kind === "income" ? "clientAccountId" : "payeeAccountId";
+      kind === "income"
+        ? `/api/income/${entry.id}`
+        : `/api/expenses/${entry.id}`;
 
     setSubmitting(true);
     try {
       const res = await fetch(path, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          [accountKey]: form.accountId,
-          categoryId: form.categoryId,
-          description: trimmedDescription,
-          totalAmount: minor.toString(),
-          entryDate: form.entryDate,
-          paymentDueOn: form.paymentDueOn,
-          notes: form.notes.trim() ? form.notes.trim() : null,
-          ...feeFields,
-        }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as ApiError;
       if (!res.ok) {
         toast.error(data.error ?? "Failed to save changes");
         return;
       }
-      toast.success("Draft updated");
+      toast.success(posted ? "Entry updated" : "Draft updated");
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -120,10 +143,9 @@ export function EditEntryDialog({
 
   const submitDisabled =
     submitting ||
-    !form.accountId ||
     !form.categoryId ||
     !form.description.trim() ||
-    !form.amount.trim();
+    (!posted && (!form.accountId || !form.amount.trim()));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,10 +159,13 @@ export function EditEntryDialog({
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit {kind} draft</DialogTitle>
+            <DialogTitle>
+              Edit {kind} {posted ? "entry" : "draft"}
+            </DialogTitle>
             <DialogDescription>
-              Only draft entries can be edited. Confirmed entries must be
-              reversed to change them.
+              {posted
+                ? POSTED_LOCK_REASON
+                : "This entry hasn't posted to the ledger yet, so everything is still editable."}
             </DialogDescription>
           </DialogHeader>
 
@@ -153,6 +178,7 @@ export function EditEntryDialog({
               accounts={accounts}
               categories={categories}
               submitting={submitting}
+              lockedFields={lockedFields}
             />
           </div>
 

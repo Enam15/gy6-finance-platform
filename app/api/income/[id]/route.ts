@@ -2,7 +2,11 @@ import { IncomeService } from "@/services/income-service";
 import { getActor } from "@/lib/auth";
 import { jsonResponse } from "@/lib/json";
 
-/** Edit a DRAFT income entry. Confirmed entries are immutable (use reversal). */
+/**
+ * Edit an income entry. A draft accepts a full edit; a posted one accepts
+ * only its non-ledger fields. The service decides from the stored state - the
+ * body never gets a say in which rules apply.
+ */
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -20,7 +24,7 @@ export async function PATCH(
     );
   }
 
-  const result = await new IncomeService().updateDraft(id, body, {
+  const result = await new IncomeService().update(id, body, {
     actorId: actor?.id ?? null,
     actorLabel: actor?.label ?? null,
   });

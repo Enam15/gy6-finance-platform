@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { FeePicker } from "@/components/fee-picker";
 import { parseEntryAmountMinor, type EntryFormState } from "@/lib/entry-form";
+import type { LockedEntryField } from "@/lib/entry-edit";
 
 export interface EntryOption {
   id: string;
@@ -27,6 +28,11 @@ interface EntryFormFieldsProps {
   accounts: EntryOption[];
   categories: EntryOption[];
   submitting?: boolean;
+  /**
+   * Fields to render read-only. The edit dialog passes the ledger-backed ones
+   * for a posted entry; the server enforces the same set independently.
+   */
+  lockedFields?: readonly LockedEntryField[];
 }
 
 /**
@@ -42,8 +48,10 @@ export function EntryFormFields({
   accounts,
   categories,
   submitting,
+  lockedFields = [],
 }: EntryFormFieldsProps) {
   const accountLabel = kind === "income" ? "Source account" : "Payee account";
+  const locked = (field: LockedEntryField) => lockedFields.includes(field);
   function set<K extends keyof EntryFormState>(key: K, v: EntryFormState[K]) {
     onChange({ ...value, [key]: v });
   }
@@ -65,6 +73,7 @@ export function EntryFormFields({
             items={accountItems}
             value={value.accountId}
             onValueChange={(v) => set("accountId", v ?? "")}
+            disabled={locked("accountId") || submitting}
           >
             <SelectTrigger id={`${idPrefix}-account`}>
               <SelectValue placeholder="Pick an account" />
@@ -84,6 +93,7 @@ export function EntryFormFields({
             items={categoryItems}
             value={value.categoryId}
             onValueChange={(v) => set("categoryId", v ?? "")}
+            disabled={submitting}
           >
             <SelectTrigger id={`${idPrefix}-category`}>
               <SelectValue placeholder="Pick a category" />
@@ -111,6 +121,7 @@ export function EntryFormFields({
               : "e.g. June salary - Mustafa"
           }
           required
+          disabled={submitting}
         />
       </div>
 
@@ -123,6 +134,7 @@ export function EntryFormFields({
             onValueChange={(v) => set("amount", v)}
             placeholder="1234.56"
             required
+            disabled={locked("amount") || submitting}
           />
         </div>
         <div className="grid gap-2">
@@ -133,6 +145,7 @@ export function EntryFormFields({
             value={value.entryDate}
             onChange={(e) => set("entryDate", e.target.value)}
             required
+            disabled={locked("entryDate") || submitting}
           />
         </div>
         <div className="grid gap-2">
@@ -143,6 +156,7 @@ export function EntryFormFields({
             value={value.paymentDueOn}
             onChange={(e) => set("paymentDueOn", e.target.value)}
             required
+            disabled={submitting}
           />
         </div>
       </div>
@@ -153,7 +167,7 @@ export function EntryFormFields({
         onChange={(fee) => set("fee", fee)}
         totalMinor={parseEntryAmountMinor(value.amount)}
         direction={kind === "income" ? "in" : "out"}
-        disabled={submitting}
+        disabled={locked("fee") || submitting}
       />
 
       <div className="grid gap-2">

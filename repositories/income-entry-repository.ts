@@ -40,6 +40,17 @@ export interface UpdateIncomeEntryData {
 }
 
 /**
+ * The fields of a posted entry that stay editable: how it is filed, labelled,
+ * scheduled and annotated. Nothing here feeds a ledger posting.
+ */
+export interface UpdatePostedIncomeEntryData {
+  categoryId: string;
+  description: string;
+  paymentDueOn: Date;
+  notes?: string | null;
+}
+
+/**
  * Data access for income entries (the operational layer; the ledger postings
  * land in statement_entries).
  */
@@ -114,6 +125,27 @@ export class IncomeEntryRepository {
         feeLabel: data.feeLabel ?? null,
         feeBps: data.feeBps ?? null,
         feeAmount: data.feeAmount ?? null,
+        notes: data.notes ?? null,
+      },
+    });
+  }
+
+  /**
+   * Update only the fields of a posted entry that no ledger posting is built
+   * from. The columns the books depend on - amounts, account, entry date and
+   * fee - are not settable here by construction, so a bug in a caller cannot
+   * desync a confirmed entry from its postings.
+   */
+  updatePostedFields(
+    id: string,
+    data: UpdatePostedIncomeEntryData,
+  ): Promise<IncomeEntry> {
+    return this.db.incomeEntry.update({
+      where: { id },
+      data: {
+        categoryId: data.categoryId,
+        description: data.description,
+        paymentDueOn: data.paymentDueOn,
         notes: data.notes ?? null,
       },
     });

@@ -16,6 +16,7 @@ import { feeMethodLabel, bpsToPercent } from "@/lib/fees";
 import type { SerializedEntry } from "@/lib/entry-form";
 import type { EntryOption } from "@/components/entry-form-fields";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
+import { isEntryEditable } from "@/lib/entry-edit";
 import { FullyPaidButton } from "@/components/fully-paid-button";
 import { ReverseButton } from "@/components/reverse-button";
 import { AttachmentsDialog } from "@/components/attachments-dialog";
@@ -275,7 +276,7 @@ export function EntriesTable({
                           label={entry.description}
                           count={attachmentCount}
                         />
-                        {entry.state === "DRAFT" && (
+                        {isEntryEditable(entry.state) && (
                           <EditEntryDialog
                             kind={kind}
                             entry={entry}
@@ -283,9 +284,15 @@ export function EntriesTable({
                             categories={categories}
                           />
                         )}
-                        {entry.state !== "DRAFT" && (
+                        {entry.state === "CONFIRMED" && (
                           <span className="text-xs text-muted-foreground">
-                            Confirmed entries are locked — reverse to correct.
+                            Posted — amount, account and date can only change by
+                            reversing.
+                          </span>
+                        )}
+                        {entry.state === "REVERSED" && (
+                          <span className="text-xs text-muted-foreground">
+                            Reversed — this entry is closed.
                           </span>
                         )}
                       </div>

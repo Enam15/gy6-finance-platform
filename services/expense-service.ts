@@ -33,6 +33,19 @@ const createSchema = z.object({
 export type CreateExpenseInput = z.infer<typeof createSchema>;
 
 /**
+ * The only changes a posted entry accepts: how it is filed, labelled,
+ * scheduled and annotated. Strict on purpose - a body that also carries an
+ * amount, account, date or fee is rejected rather than quietly stripped, so
+ * nobody can believe a locked field was saved when it wasn't.
+ */
+const postedPatchSchema = z.strictObject({
+  categoryId: z.string().min(1, "A category is required"),
+  description: z.string().trim().min(1, "Description is required").max(500),
+  paymentDueOn: z.coerce.date(),
+  notes: z.string().trim().max(2000).nullish(),
+});
+
+/**
  * Normalise the optional fee inputs into the columns stored on an entry.
  * A fee is either a percentage (feeBps) or a fixed amount (feeAmount); the
  * percentage takes precedence when both are somehow present.
@@ -199,37 +212,65 @@ export class ExpenseService {
   }
 
   /**
-   * Edit a DRAFT expense entry in place. Confirmed/reversed entries are
-   * immutable (already posted to the ledger) - correct those via a reversal.
+   * Edit an expense entry. What that means depends on its state: a DRAFT has
+   * not touched the ledger and is fully editable; a CONFIRMED entry has, so
+   * it only accepts changes no posting is built from (see lib/entry-edit);
+   * a REVERSED one is closed to edits entirely.
    */
-  async updateDraft(
+  async update(
     id: string,
     input: unknown,
     options: { actorId?: string | null; actorLabel?: string | null } = {},
   ): Promise<Result<ExpenseEntry>> {
+    const existing = await new ExpenseEntryRepository(this.db).findById(id);
+    if (!existing) return err(`Expense entry ${id} was not found`);
+
+    switch (existing.state) {
+      case "DRAFT":
+        return this.updateDraftEntry(existing, input, options);
+      case "CONFIRMED":
+        return this.updatePostedEntry(existing, input, options);
+      case "REVERSED":
+        return err(
+          "This expense entry has been reversed and can no longer be edited",
+        );
+    }
+  }
+
+  /** Resolve a category id, rejecting one that is not an expense category. */
+  private async requireExpenseCategory(id: string): Promise<Result<true>> {
+    const category = await new TransactionCategoryRepository(this.db).findById(
+      id,
+    );
+    if (!category) return err(`Category ${id} was not found`);
+    if (category.kind !== "EXPENSE") {
+      return err("Category must be of kind EXPENSE");
+    }
+    return ok(true);
+  }
+
+  /**
+   * Full edit of a not-yet-posted entry. Nothing is on the books, so every
+   * field is fair game - re-validated exactly like creation.
+   */
+  private async updateDraftEntry(
+    existing: ExpenseEntry,
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null },
+  ): Promise<Result<ExpenseEntry>> {
+    const id = existing.id;
     const parsed = createSchema.safeParse(input);
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => i.message).join("; "));
     }
     const data = parsed.data;
 
-    const existing = await new ExpenseEntryRepository(this.db).findById(id);
-    if (!existing) return err(`Expense entry ${id} was not found`);
-    if (existing.state !== "DRAFT") {
-      return err("Only draft expense entries can be edited");
-    }
-
     const account = await new AccountRepository(this.db).findById(
       data.payeeAccountId,
     );
     if (!account) return err(`Account ${data.payeeAccountId} was not found`);
-    const category = await new TransactionCategoryRepository(this.db).findById(
-      data.categoryId,
-    );
-    if (!category) return err(`Category ${data.categoryId} was not found`);
-    if (category.kind !== "EXPENSE") {
-      return err("Category must be of kind EXPENSE");
-    }
+    const category = await this.requireExpenseCategory(data.categoryId);
+    if (!category.ok) return err(category.error);
 
     const fee = resolveFee(
       data.totalAmount,
@@ -269,6 +310,62 @@ export class ExpenseService {
           totalAmount: updated.totalAmount.toString(),
           payeeAccountId: updated.payeeAccountId,
           categoryId: updated.categoryId,
+        },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return updated;
+    });
+
+    return ok(entry);
+  }
+
+  /**
+   * Edit of a posted entry, restricted to the fields no posting is built
+   * from. The schema is strict, so a caller that tries to slip in a new
+   * amount, account, date or fee gets a loud error rather than a silently
+   * dropped change - those are corrected by reversing the entry.
+   */
+  private async updatePostedEntry(
+    existing: ExpenseEntry,
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null },
+  ): Promise<Result<ExpenseEntry>> {
+    const parsed = postedPatchSchema.safeParse(input);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((i) => i.message).join("; "));
+    }
+    const data = parsed.data;
+
+    const category = await this.requireExpenseCategory(data.categoryId);
+    if (!category.ok) return err(category.error);
+
+    const entry = await this.db.$transaction(async (tx) => {
+      const updated = await new ExpenseEntryRepository(tx).updatePostedFields(
+        existing.id,
+        {
+          categoryId: data.categoryId,
+          description: data.description,
+          paymentDueOn: data.paymentDueOn,
+          notes: data.notes ?? null,
+        },
+      );
+      await new AuditLogRepository(tx).record({
+        action: "UPDATE",
+        entityType: "ExpenseEntry",
+        entityId: updated.id,
+        summary: `Posted expense "${updated.description}" re-labelled - ledger untouched`,
+        before: {
+          description: existing.description,
+          categoryId: existing.categoryId,
+          paymentDueOn: existing.paymentDueOn.toISOString().slice(0, 10),
+          notes: existing.notes,
+        },
+        after: {
+          description: updated.description,
+          categoryId: updated.categoryId,
+          paymentDueOn: updated.paymentDueOn.toISOString().slice(0, 10),
+          notes: updated.notes,
         },
         actorId: options.actorId ?? null,
         actorLabel: options.actorLabel ?? null,
