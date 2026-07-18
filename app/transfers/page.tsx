@@ -20,6 +20,8 @@ import { formatMoney, money } from "@/lib/money";
 import { feeMethodLabel, bpsToPercent } from "@/lib/fees";
 import type { EntryState } from "@/lib/generated/prisma/client";
 import { CreateTransferDialog } from "./_components/create-transfer-dialog";
+import { CreateAccountDialog } from "@/app/accounts/_components/create-account-dialog";
+import { parseCustomFields } from "@/lib/account-fields";
 import { ReverseButton } from "@/components/reverse-button";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +47,16 @@ export default async function TransfersPage() {
   const transferService = new TransferService();
   const accountService = new AccountService();
 
-  const [transfers, businessAccounts] = await Promise.all([
+  const [transfers, businessAccounts, categories] = await Promise.all([
     transferService.listAll(),
     accountService.listBusinessAccounts(),
+    accountService.listSelectableCategories(),
   ]);
+
+  // Transfers move cash between your own bank accounts, so the "add" button
+  // here is pinned to the Business category rather than asking the user to
+  // work out which category a bank belongs to.
+  const businessCategory = categories.find((c) => c.key === "BUSINESS");
 
   const accountNameById = new Map(
     businessAccounts.map((a) => [a.id, a.name]),
@@ -71,14 +79,39 @@ export default async function TransfersPage() {
             refuses transfers that would overdraw the source.
           </p>
         </div>
-        {canCreate ? (
-          <CreateTransferDialog businessAccounts={businessAccountOptions} />
-        ) : (
-          <span className="max-w-xs text-right text-sm text-muted-foreground">
-            Create at least two Business accounts to record transfers.
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {businessCategory && (
+            <CreateAccountDialog
+              categories={[
+                {
+                  id: businessCategory.id,
+                  name: businessCategory.name,
+                  fields: parseCustomFields(businessCategory.customFields),
+                },
+              ]}
+              fixedCategoryId={businessCategory.id}
+              triggerLabel="Add bank account"
+              triggerVariant={canCreate ? "outline" : "default"}
+            />
+          )}
+          {canCreate && (
+            <CreateTransferDialog businessAccounts={businessAccountOptions} />
+          )}
+        </div>
       </div>
+
+      {!canCreate && (
+        <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
+          A transfer moves cash between two of your own bank accounts, so you
+          need at least two before you can record one.{" "}
+          {businessAccounts.length === 1
+            ? `Right now there is one: "${businessAccounts[0]?.name}".`
+            : "Right now there are none."}{" "}
+          Add another with the button above - bank accounts live under the
+          Business category, and the same accounts are what payments land in
+          and come out of.
+        </div>
+      )}
 
       <Card>
         <CardHeader>

@@ -32,17 +32,30 @@ export interface CategoryOption {
 
 interface CreateAccountDialogProps {
   categories: CategoryOption[];
+  /**
+   * Pin the dialog to one category and hide the picker. Lets the same dialog
+   * serve as a focused "add a bank account" button from the screens that need
+   * one, without making the user go find the category themselves.
+   */
+  fixedCategoryId?: string;
+  triggerLabel?: string;
+  triggerVariant?: "default" | "outline";
 }
 
 interface ApiError {
   error?: string;
 }
 
-export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
+export function CreateAccountDialog({
+  categories,
+  fixedCategoryId,
+  triggerLabel = "New account",
+  triggerVariant = "default",
+}: CreateAccountDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useState(fixedCategoryId ?? "");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [allowAdjust, setAllowAdjust] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +70,7 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
 
   function reset() {
     setName("");
-    setCategoryId("");
+    setCategoryId(fixedCategoryId ?? "");
     setFieldValues({});
     setAllowAdjust(true);
   }
@@ -109,13 +122,19 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={<Button>New account</Button>} />
+      <DialogTrigger
+        render={<Button variant={triggerVariant}>{triggerLabel}</Button>}
+      />
       <DialogContent>
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Create an account</DialogTitle>
+            <DialogTitle>
+              {fixedCategoryId ? "Add a bank account" : "Create an account"}
+            </DialogTitle>
             <DialogDescription>
-              Pick a category - the normal balance is derived from it.
+              {fixedCategoryId
+                ? "A Business account is one of your own bank accounts - the money you actually hold. These are what transfers move between, and what payments land in or come out of."
+                : "Pick a category - the normal balance is derived from it."}
             </DialogDescription>
           </DialogHeader>
 
@@ -131,28 +150,35 @@ export function CreateAccountDialog({ categories }: CreateAccountDialogProps) {
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="account-category">Category</Label>
-              <Select
-                items={categoryItems}
-                value={categoryId}
-                onValueChange={(value) => {
-                  setCategoryId(value ?? "");
-                  setFieldValues({});
-                }}
-              >
-                <SelectTrigger id="account-category">
-                  <SelectValue placeholder="Pick a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!fixedCategoryId && (
+              <div className="grid gap-2">
+                <Label htmlFor="account-category">Category</Label>
+                <Select
+                  items={categoryItems}
+                  value={categoryId}
+                  onValueChange={(value) => {
+                    setCategoryId(value ?? "");
+                    setFieldValues({});
+                  }}
+                >
+                  <SelectTrigger id="account-category">
+                    <SelectValue placeholder="Pick a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Business = your own bank accounts (the money you hold).
+                  Client, Employee, Subscription and Founder are who you send
+                  money to or receive it from.
+                </p>
+              </div>
+            )}
 
             {selectedCategory?.fields.map((field) => (
               <div key={field.id} className="grid gap-2">

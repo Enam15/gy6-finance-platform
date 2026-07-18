@@ -137,23 +137,32 @@ export function FullyPaidButton({
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor={`fp-${entryId}-account`}>Business account</Label>
-            <Select
-              items={accountItems}
-              value={businessAccountId}
-              onValueChange={(v) => setBusinessAccountId(v ?? "")}
-            >
-              <SelectTrigger id={`fp-${entryId}-account`}>
-                <SelectValue placeholder="Pick a Business account" />
-              </SelectTrigger>
-              <SelectContent>
-                {businessAccounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor={`fp-${entryId}-account`}>
+              {isIncome ? "Bank account to receive it" : "Bank account to pay from"}
+            </Label>
+            {businessAccounts.length === 0 ? (
+              <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                You have no bank accounts yet. Add one under Accounts (the
+                Business category) and it will show up here.
+              </p>
+            ) : (
+              <Select
+                items={accountItems}
+                value={businessAccountId}
+                onValueChange={(v) => setBusinessAccountId(v ?? "")}
+              >
+                <SelectTrigger id={`fp-${entryId}-account`}>
+                  <SelectValue placeholder="Pick a bank account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {businessAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`fp-${entryId}-date`}>Paid on</Label>
