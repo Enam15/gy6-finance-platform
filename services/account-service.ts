@@ -27,6 +27,20 @@ const createAccountSchema = z.object({
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 
+/**
+ * What an account edit may carry. Strict so a body that also tries to set a
+ * balance, a normal balance or a system key is rejected outright rather than
+ * quietly stripped: none of those are an edit's to make.
+ */
+const updateAccountSchema = z.strictObject({
+  categoryId: z.string().min(1, "A category is required"),
+  name: z.string().trim().min(1, "Account name is required").max(120),
+  description: z.string().trim().max(500).nullish(),
+  allowNegative: z.boolean().optional(),
+  /** Values for the category's custom fields, keyed by field id. */
+  customValues: z.record(z.string(), z.string()).optional(),
+});
+
 const createCategorySchema = z.object({
   name: z.string().trim().min(1, "A category name is required").max(60),
   /**
@@ -209,6 +223,113 @@ export class AccountService {
         actorLabel: options.actorLabel ?? null,
       });
       return created;
+    });
+
+    return ok(account);
+  }
+
+  /**
+   * Edit an account's details: its name, description, category, custom field
+   * values and negative-balance policy.
+   *
+   * Two things are never an edit's to change. The balance is materialised
+   * from postings, so it moves only through a ledger event (that's what an
+   * adjustment is for) and isn't in the schema at all. The normal balance is
+   * derived from the category and decides which way a posting moves that
+   * balance - so re-filing an account under a category that would flip it is
+   * refused unless the account has never been posted to and sits at zero,
+   * where there is no history to invert.
+   */
+  async updateAccount(
+    id: string,
+    input: unknown,
+    options: { actorId?: string | null; actorLabel?: string | null } = {},
+  ): Promise<Result<Account>> {
+    const parsed = updateAccountSchema.safeParse(input);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((issue) => issue.message).join("; "));
+    }
+    const data = parsed.data;
+
+    const repo = new AccountRepository(this.db);
+    const existing = await repo.findById(id);
+    if (!existing) return err(`Account ${id} was not found`);
+    if (existing.systemKey) {
+      return err(
+        `"${existing.name}" is a system account that the ledger posts against - it cannot be edited`,
+      );
+    }
+
+    const category = await new AccountCategoryRepository(this.db).findById(
+      data.categoryId,
+    );
+    if (!category) {
+      return err(`Account category ${data.categoryId} was not found`);
+    }
+    if (category.isSystem) {
+      return err("Accounts cannot be moved into the system category");
+    }
+
+    const normalBalance = normalBalanceForCategory(category);
+    if (normalBalance !== existing.normalBalance) {
+      const postings = await repo.countPostings(id);
+      if (postings > 0 || existing.balance !== 0n) {
+        return err(
+          `Moving "${existing.name}" to ${category.name} would flip it from ${existing.normalBalance}-normal to ${normalBalance}-normal, inverting what its balance means. Its history already depends on the current one, so create a new account under ${category.name} instead.`,
+        );
+      }
+    }
+
+    if (data.allowNegative === false && existing.balance < 0n) {
+      return err(
+        `"${existing.name}" is already at a negative balance, so it cannot be set to disallow one. Bring it back to zero or above first.`,
+      );
+    }
+
+    // Keep only values for fields the (possibly new) category defines, so a
+    // re-filed account doesn't carry the old category's values around.
+    const fieldIds = new Set(
+      parseCustomFields(category.customFields).map((f) => f.id),
+    );
+    const customValues: Record<string, string> = {};
+    for (const [fieldId, value] of Object.entries(data.customValues ?? {})) {
+      if (fieldIds.has(fieldId) && value.trim()) {
+        customValues[fieldId] = value.trim();
+      }
+    }
+
+    const account = await this.db.$transaction(async (tx) => {
+      const updated = await new AccountRepository(tx).updateDetails(id, {
+        categoryId: data.categoryId,
+        name: data.name,
+        normalBalance,
+        description: data.description ?? null,
+        allowNegative: data.allowNegative ?? existing.allowNegative,
+        customValues,
+      });
+      await new AuditLogRepository(tx).record({
+        action: "UPDATE",
+        entityType: "Account",
+        entityId: updated.id,
+        summary: `Account "${updated.name}" edited`,
+        before: {
+          name: existing.name,
+          categoryId: existing.categoryId,
+          description: existing.description,
+          allowNegative: existing.allowNegative,
+          customValues: existing.customValues,
+        },
+        after: {
+          name: updated.name,
+          categoryId: updated.categoryId,
+          description: updated.description,
+          allowNegative: updated.allowNegative,
+          customValues: updated.customValues,
+        },
+        actorId: options.actorId ?? null,
+        actorLabel: options.actorLabel ?? null,
+      });
+      return updated;
     });
 
     return ok(account);

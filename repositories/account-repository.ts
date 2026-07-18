@@ -26,6 +26,24 @@ export interface CreateAccountData {
 }
 
 /**
+ * The details of an account that the ledger has no stake in: what it is
+ * called, how it is filed, and its posting policy. `balance` and `systemKey`
+ * are deliberately not settable here - the balance is materialised from
+ * postings and moves only through a ledger event, so no edit path can reach
+ * it. `normalBalance` is present only because it follows the category; the
+ * service refuses a change that would flip it under a live account.
+ */
+export interface UpdateAccountData {
+  categoryId: string;
+  name: string;
+  normalBalance: NormalBalance;
+  description?: string | null;
+  allowNegative?: boolean;
+  /** Values for the category's custom fields; `{}` clears them. */
+  customValues: Prisma.InputJsonValue;
+}
+
+/**
  * Data access for accounts. Construct with the request's Prisma client or a
  * transaction client. Contains no business logic.
  */
@@ -103,6 +121,28 @@ export class AccountRepository {
         systemKey: data.systemKey ?? null,
         customValues: data.customValues ?? undefined,
       },
+    });
+  }
+
+  /** Overwrite an account's editable details. Never touches `balance`. */
+  updateDetails(id: string, data: UpdateAccountData): Promise<Account> {
+    return this.db.account.update({
+      where: { id },
+      data: {
+        categoryId: data.categoryId,
+        name: data.name,
+        normalBalance: data.normalBalance,
+        description: data.description ?? null,
+        allowNegative: data.allowNegative ?? false,
+        customValues: data.customValues,
+      },
+    });
+  }
+
+  /** Count the postings touching an account on either side. */
+  countPostings(id: string): Promise<number> {
+    return this.db.statementEntry.count({
+      where: { OR: [{ debitAccountId: id }, { creditAccountId: id }] },
     });
   }
 

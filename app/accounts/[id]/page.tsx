@@ -19,12 +19,17 @@ import { Badge } from "@/components/ui/badge";
 import { AccountService } from "@/services/account-service";
 import { StatementEntryService } from "@/services/statement-entry-service";
 import { formatMoney, money } from "@/lib/money";
-import { customFieldValues } from "@/lib/account-fields";
+import {
+  customFieldValues,
+  parseCustomFields,
+  parseCustomValues,
+} from "@/lib/account-fields";
 import { cn } from "@/lib/utils";
 import type { StatementEntryType } from "@/lib/generated/prisma/client";
 import { ExportLinks } from "@/components/export-links";
 import { AdjustBalanceButton } from "./_components/adjust-balance-button";
 import { AccountAdjustToggle } from "./_components/account-adjust-toggle";
+import { EditAccountDialog } from "./_components/edit-account-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -61,14 +66,16 @@ export default async function AccountDetailPage({ params }: PageProps) {
   const accountService = new AccountService();
   const statementService = new StatementEntryService();
 
-  // Run the detail bundle, the per-account ledger, and the full account list
-  // (for counterparty name lookups - includes hidden system accounts) in
-  // parallel.
-  const [detailResult, entries, accounts] = await Promise.all([
-    accountService.getDetail(id),
-    statementService.listByAccount(id, 100),
-    accountService.listAccounts(),
-  ]);
+  // Run the detail bundle, the per-account ledger, the full account list (for
+  // counterparty name lookups - includes hidden system accounts) and the
+  // categories the edit dialog can re-file into, in parallel.
+  const [detailResult, entries, accounts, selectableCategories] =
+    await Promise.all([
+      accountService.getDetail(id),
+      statementService.listByAccount(id, 100),
+      accountService.listAccounts(),
+      accountService.listSelectableCategories(),
+    ]);
 
   if (!detailResult.ok) notFound();
   const { account, category, outstandingIncome, outstandingExpense } =
@@ -103,13 +110,28 @@ export default async function AccountDetailPage({ params }: PageProps) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {account.allowBalanceAdjust && (
-            <AdjustBalanceButton
+          <div className="flex items-center gap-2">
+            <EditAccountDialog
               accountId={id}
-              accountName={account.name}
-              currentBalanceMinor={account.balance.toString()}
+              name={account.name}
+              description={account.description ?? ""}
+              categoryId={account.categoryId}
+              allowNegative={account.allowNegative}
+              values={parseCustomValues(account.customValues)}
+              categories={selectableCategories.map((c) => ({
+                id: c.id,
+                name: c.name,
+                fields: parseCustomFields(c.customFields),
+              }))}
             />
-          )}
+            {account.allowBalanceAdjust && (
+              <AdjustBalanceButton
+                accountId={id}
+                accountName={account.name}
+                currentBalanceMinor={account.balance.toString()}
+              />
+            )}
+          </div>
           <AccountAdjustToggle
             accountId={id}
             isOn={account.allowBalanceAdjust}
