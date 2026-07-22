@@ -2,6 +2,8 @@
 
 Foundation for an internal finance and accounting platform for GY6. This repository contains the first implementation layer of the product: the database model, accounting rules, ledger services, core API routes, and early operational screens for accounts, income, expenses, and transaction categories.
 
+> **Taking over this project?** Start in [`handover/`](handover/) — a plain-language guide to the system, the accounts and credentials to take ownership of, setting up your own database, and running/deploying it.
+
 The project is intentionally marked as a foundation-stage build. It is not a finished production product yet, but the codebase is structured around the financial controls that the final product will need: correctness, auditability, transaction safety, and maintainable accounting behavior.
 
 ## Current Scope
